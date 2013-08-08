@@ -53,6 +53,14 @@ def cc_masks(image,connected_components,max_size,min_size):
     #print str(mask[component])
   return mask
 
+def cc_filter_by_size(image,connected_components,max_size,min_size):
+  filtered = []
+  for cc in connected_components:
+    if area_bb(cc)**0.5<min_size: continue
+    if area_bb(cc)**0.5>max_size: continue
+    filtered.append(cc)
+  return filtered
+
 def draw_bounding_boxes(img,connected_components,color=(0,0,255),line_size=2):
   for component in connected_components:
     #if area_bb(component)**0.5<min_size: continue
@@ -62,6 +70,50 @@ def draw_bounding_boxes(img,connected_components,color=(0,0,255),line_size=2):
     #if a>max_size: continue
     (ys,xs)=component[:2]
     cv2.rectangle(img,(xs.start,ys.start),(xs.stop,ys.stop),color,line_size)
+
+def segment_into_lines(img,color_image,filtered,average_size):
+  horizontal_lines = []
+  vertical_lines = []
+  unk_lines = []
+  for cc in filtered:
+    #horizontal and vertical histogram of nonzero pixels through each section
+    #just look for completely white sections first.
+    (ys,xs)=cc[:2]
+    w=xs.stop-xs.start
+    h=ys.stop-ys.start
+    x = xs.start
+    y = ys.start
+    aspect = float(w)/float(h)
+    if aspect>2.0:
+      #almost certainly horizontal text
+      horizontal_lines.append(cc)
+    elif aspect<0.5:
+      #almost certainly vertical text
+      vertical_lines.append(cc)
+    else:
+      #don't know if horizontal or vertical. do our best to find out.
+      unk_lines.append(cc)
+    
+    
+    #go across horizontal first as vertical lines are more common
+    vertical_white_lines = []
+    for col in range(xs.start,xs.stop):
+      #line = slice(
+      count = np.count_nonzero(img[ys.start:ys.stop,col])
+      #print str(count)
+      if count == 0:
+        vertical_white_lines.append(col)
+        cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+
+    horizontal_white_lines = []
+    for row in range(ys.start,ys.stop):
+      count = np.count_nonzero(img[row,xs.start:xs.stop])
+      #print str(count)
+      if count == 0:
+        horizontal_white_lines.append(row)
+        cv2.line(color_image, (xs.start,row), (xs.stop,row),(0,255,255),1)
+
+  return (horizontal_lines, vertical_lines, unk_lines)
 
 if __name__ == '__main__':
 
@@ -79,13 +131,13 @@ if __name__ == '__main__':
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
   #scaled = cv2.pyrUp(cv2.pyrDown(gray,dstsize=(w/2, h/2)),dstsize=(w, h))
   #(binthresh,binary) = cv2.threshold(scaled, 190, 255, cv2.THRESH_BINARY_INV )
-  (binthresh_gray,binary_unscaled) = cv2.threshold(gray, 190, 255, cv2.THRESH_BINARY_INV )
+  (binthresh_gray,binary) = cv2.threshold(gray, 190, 255, cv2.THRESH_BINARY_INV )
   
   #Draw out statistics on average connected component size in the rescaled, binary image
-  components = get_connected_components(binary_unscaled)
+  components = get_connected_components(binary)
   sorted_components = sorted(components,key=area_bb)
   #sorted_components = sorted(components,key=lambda x:area_nz(x,binary))
-  areas = zeros(binary_unscaled.shape)
+  areas = zeros(binary.shape)
   for component in sorted_components:
     if amax(areas[component])>0: continue
     areas[component] = area_bb(component)**0.5
@@ -97,7 +149,7 @@ if __name__ == '__main__':
   #use multiple of average size as vertical threshold for run length smoothing
   smoothing_threshold = 1*average_size
 
-  vertical = binary_unscaled.copy()
+  vertical = binary.copy()
   (rows,cols)=vertical.shape
   print "total rows " + str(rows) + " total cols "+ str(cols)
   for row in xrange(rows):
@@ -114,7 +166,7 @@ if __name__ == '__main__':
         if next_row-row>smoothing_threshold:break
         next_row = next_row+1
 
-  horizontal = binary_unscaled.copy()
+  horizontal = binary.copy()
   (rows,cols)=horizontal.shape
   print "total rows " + str(rows) + " total cols "+ str(cols)
   for row in xrange(cols):
@@ -131,14 +183,25 @@ if __name__ == '__main__':
             #horizontal[col,n]=255
           break
           #print 'setting white'
-          #binary_unscaled[row,col]=255
+          #binary[row,col]=255
         if next_row-row>smoothing_threshold:break
         next_row = next_row+1
 
   run_length_smoothed_or = cv2.bitwise_or(vertical,horizontal)
 
   components = get_connected_components(run_length_smoothed_or)
-  draw_bounding_boxes(img,components)
+
+  #perhaps do more strict filtering of connected components because sections of characters
+  #will not be dripped from run length smoothed areas? Yes. Results quite good.
+  filtered = cc_filter_by_size(img,components,average_size*100,average_size*1)
+
+  #Attempt to segment CCs into vertical and horizontal lines
+  (horizontal_lines, vertical_lines, unk_lines) = segment_into_lines(binary,img,filtered,average_size)
+  draw_bounding_boxes(img,horizontal_lines,color=(0,0,255),line_size=2)
+  draw_bounding_boxes(img,vertical_lines,color=(0,255,0),line_size=2)
+  draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
+
+  #draw_bounding_boxes(img,filtered)
   cv2.imshow('img',img)
   cv2.imwrite('segmented.png',img)
 
