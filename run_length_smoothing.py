@@ -71,9 +71,15 @@ def draw_bounding_boxes(img,connected_components,color=(0,0,255),line_size=2):
     (ys,xs)=component[:2]
     cv2.rectangle(img,(xs.start,ys.start),(xs.stop,ys.stop),color,line_size)
 
+def draw_2d_slices(img,slices,color=(0,0,255),line_size=2):
+  for entry in slices:
+    vert=entry[0]
+    horiz=entry[1]
+    cv2.rectangle(img,(horiz.start,vert.start),(horiz.stop,vert.stop),color,line_size)
+
 def segment_into_lines(img,color_image,filtered,average_size):
-  horizontal_lines = []
-  vertical_lines = []
+  horizontal = []
+  vertical = []
   unk_lines = []
   for cc in filtered:
     #horizontal and vertical histogram of nonzero pixels through each section
@@ -84,36 +90,56 @@ def segment_into_lines(img,color_image,filtered,average_size):
     x = xs.start
     y = ys.start
     aspect = float(w)/float(h)
-    if aspect>2.0:
-      #almost certainly horizontal text
-      horizontal_lines.append(cc)
-    elif aspect<0.5:
-      #almost certainly vertical text
-      vertical_lines.append(cc)
-    else:
-      #don't know if horizontal or vertical. do our best to find out.
-      unk_lines.append(cc)
-    
-    
-    #go across horizontal first as vertical lines are more common
-    vertical_white_lines = []
+
+    #detect vertical columns of non-zero pixels
+    #vertical = []
+    start_col = xs.start
     for col in range(xs.start,xs.stop):
-      #line = slice(
       count = np.count_nonzero(img[ys.start:ys.stop,col])
       #print str(count)
-      if count == 0:
-        vertical_white_lines.append(col)
-        cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+      if count == 0 or col==(xs.stop-1):
+        #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+        if start_col>=0:
+          width = col-start_col
+          #vertical.append(img[ys.start:ys.stop,start_col:col])
+          vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
+          start_col=-1
+      else:
+        if start_col<0:
+          start_col=col
 
-    horizontal_white_lines = []
+    #detect horizontal rows of non-zero pixels
+    #horizontal=[]
+    start_row = ys.start
+    for row in range(ys.start,ys.stop):
+      count = np.count_nonzero(img[row,xs.start:xs.stop])
+      if count == 0 or row==(ys.stop-1):
+        if start_row>=0:
+          horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
+          start_row=-1
+      else:
+        if start_row<0:
+          start_row=row
+
+    #add lists of slices to horizontal or vertical list as appropriate
+    '''num_horizontal_lines = len(horizontal)
+    num_vertical_lines = len(horizontal)
+    if num_horizontal_lines<2 and num_vertical_lines<2:
+      continue
+    elif num_horizontal_lines>num_vertical_lines:
+      #must be a vertical column
+      pass
+    ''' 
+
+    '''horizontal_white_lines = []
     for row in range(ys.start,ys.stop):
       count = np.count_nonzero(img[row,xs.start:xs.stop])
       #print str(count)
       if count == 0:
         horizontal_white_lines.append(row)
         cv2.line(color_image, (xs.start,row), (xs.stop,row),(0,255,255),1)
-
-  return (horizontal_lines, vertical_lines, unk_lines)
+    '''
+  return (horizontal, vertical, unk_lines)
 
 if __name__ == '__main__':
 
@@ -197,9 +223,11 @@ if __name__ == '__main__':
 
   #Attempt to segment CCs into vertical and horizontal lines
   (horizontal_lines, vertical_lines, unk_lines) = segment_into_lines(binary,img,filtered,average_size)
-  draw_bounding_boxes(img,horizontal_lines,color=(0,0,255),line_size=2)
-  draw_bounding_boxes(img,vertical_lines,color=(0,255,0),line_size=2)
-  draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
+  #draw_bounding_boxes(img,horizontal_lines,color=(0,0,255),line_size=2)
+  draw_2d_slices(img, horizontal_lines, color=(0,0,255))
+  #draw_bounding_boxes(img,vertical_lines,color=(0,255,0),line_size=2)
+  draw_2d_slices(img,vertical_lines,color=(0,255,0))
+  #draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
 
   #draw_bounding_boxes(img,filtered)
   cv2.imshow('img',img)
