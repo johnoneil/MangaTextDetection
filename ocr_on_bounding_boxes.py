@@ -210,10 +210,32 @@ def ocr_on_bounding_boxes(img, components):
       unk_lines.extend(horizontal)
       unk_lines.extend(vertical)
     '''
+
+    '''
+      from http://code.google.com/p/tesseract-ocr/wiki/ControlParams
+      Useful parameters for Japanese and Chinese
+
+      Some Japanese tesseract user found these parameters helpful for increasing tesseract-ocr (3.02) accuracy for Japanese :
+
+      Name 	Suggested value 	Description
+      chop_enable 	T 	Chop enable.
+      use_new_state_cost 	F 	Use new state cost heuristics for segmentation state evaluation
+      segment_segcost_rating 	F 	Incorporate segmentation cost in word rating?
+      enable_new_segsearch 	0 	Enable new segmentation search path.
+      language_model_ngram_on 	0 	Turn on/off the use of character ngram model.
+      textord_force_make_prop_words 	F 	Force proportional word segmentation on all rows. 
+    '''
     #now run OCR on this bounding box
     api = tesseract.TessBaseAPI()
     api.Init(".","jpn",tesseract.OEM_DEFAULT)
     api.SetPageSegMode(tesseract.PSM_AUTO)#PSM_SINGLECHAR)#
+    api.SetVariable('chop_enable','T')
+    api.SetVariable('use_new_state_cost','F')
+    api.SetVariable('segment_segcost_rating','F')
+    api.SetVariable('enable_new_segsearch','0')
+    api.SetVariable('language_model_ngram_on','0')
+    api.SetVariable('textord_force_make_prop_words','F')
+    
     gray = cv2.cv.CreateImage((w,h), 8, 1)
     #cv2.cv.SetImageROI(binary,((x,y),(width,height))
     sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
@@ -223,6 +245,7 @@ def ocr_on_bounding_boxes(img, components):
     tesseract.SetCvImage(gray, api)
     #api.SetImage("image",binary)#,w,h,0)#channel1)#,channel1)
     txt=api.GetUTF8Text()
+    #txt=api.GetHOCRText(0)
     conf=api.MeanTextConf()
     #cv2.putText(img, str(conf), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
     #image=None
