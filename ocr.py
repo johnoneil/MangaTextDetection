@@ -1,0 +1,313 @@
+#!/usr/bin/python
+# vim: set ts=2 expandtab:
+"""
+Module: ocr
+Desc:
+Author: John O'Neil
+Email: oneil.john@gmail.com
+DATE: Saturday, August 10th 2013
+      Revision: Thursday, August 15th 2013
+
+ Run OCR on some text bounding boxes.
+  
+"""
+#import clean_page as clean
+import connected_components as cc
+import run_length_smoothing as rls
+
+import numpy as np
+import cv2
+import sys
+import scipy.ndimage
+from pylab import zeros,amax,median
+
+import tesseract
+
+def draw_2d_slices(img,slices,color=(0,0,255),line_size=2):
+  for entry in slices:
+    vert=entry[0]
+    horiz=entry[1]
+    cv2.rectangle(img,(horiz.start,vert.start),(horiz.stop,vert.stop),color,line_size)
+
+def segment_into_lines(img,color_image,filtered,average_size):
+  horizontal_lines = []
+  vertical_lines = []
+  unk_lines = []
+  for cc in filtered:
+    #horizontal and vertical histogram of nonzero pixels through each section
+    #just look for completely white sections first.
+    (ys,xs)=cc[:2]
+    w=xs.stop-xs.start
+    h=ys.stop-ys.start
+    x = xs.start
+    y = ys.start
+    aspect = float(w)/float(h)
+
+    #detect vertical columns of non-zero pixels
+    vertical = []
+    start_col = xs.start
+    for col in range(xs.start,xs.stop):
+      count = np.count_nonzero(img[ys.start:ys.stop,col])
+      #print str(count)
+      if count == 0 or col==(xs.stop-1):
+        #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+        if start_col>=0:
+          width = col-start_col
+          #print 'width ' + str(width)
+          #vertical.append(img[ys.start:ys.stop,start_col:col])
+          vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
+          start_col=-1
+      else:
+        if start_col<0:
+          start_col=col
+
+    #detect horizontal rows of non-zero pixels
+    horizontal=[]
+    start_row = ys.start
+    for row in range(ys.start,ys.stop):
+      count = np.count_nonzero(img[row,xs.start:xs.stop])
+      if count == 0 or row==(ys.stop-1):
+        if start_row>=0:
+          height = row-start_row
+          #print 'height ' + str(height)
+          horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
+          start_row=-1
+      else:
+        if start_row<0:
+          start_row=row
+
+    #we've now broken up the original bounding box into possible vertical
+    #and horizontal lines.
+    #We now wish to:
+    #1) Determine if the original bounding box contains text running V or H
+    #2) Eliminate all bounding boxes (don't return them in our output lists) that
+    #   we can't explicitly say have some "regularity" in their line width/heights
+    #3) Eliminate all bounding boxes that can't be divided into v/h lines at all(???)
+    #also we will give possible vertical text runs preference as they're more common
+    if len(vertical)<2 and len(horizontal)<2:continue
+    if aspect<0.5:
+      #assume vertical text
+      vertical_lines.extend(vertical)
+      #vertical_lines.extend(horizontal)
+    elif aspect>2.0:
+      #assume horizontal text
+      horizontal_lines.extend(horizontal)
+    else:
+      #try to figure out if h or v
+      unk_lines.extend(horizontal)
+      unk_lines.extend(vertical)
+      
+  return (horizontal_lines, vertical_lines, unk_lines)
+
+def ocr_on_bounding_boxes(img, components):
+  #horizontal_lines = []
+  #vertical_lines = []
+  #unk_lines = []
+  for cc in components:
+    #horizontal and vertical histogram of nonzero pixels through each section
+    #just look for completely white sections first.
+    (ys,xs)=cc[:2]
+    
+    w=xs.stop-xs.start
+    h=ys.stop-ys.start
+    x = xs.start
+    y = ys.start
+    aspect = float(w)/float(h)
+    print "..............."
+    print " w:" + str(w) +" h:" +str(h)+ "at: " +str(x)+","+str(y)
+
+    #detect vertical columns of non-zero pixels
+    vertical = []
+    start_col = xs.start
+    for col in range(xs.start,xs.stop):
+      count = np.count_nonzero(img[ys.start:ys.stop,col])
+      #print str(count)
+      if count == 0 or col==(xs.stop-1):
+        #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+        if start_col>=0:
+          width = col-start_col
+          #print 'width ' + str(width)
+          #vertical.append(img[ys.start:ys.stop,start_col:col])
+          vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
+          start_col=-1
+      else:
+        if start_col<0:
+          start_col=col
+
+    #detect horizontal rows of non-zero pixels
+    horizontal=[]
+    start_row = ys.start
+    for row in range(ys.start,ys.stop):
+      count = np.count_nonzero(img[row,xs.start:xs.stop])
+      if count == 0 or row==(ys.stop-1):
+        if start_row>=0:
+          height = row-start_row
+          #print 'height ' + str(height)
+          horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
+          start_row=-1
+      else:
+        if start_row<0:
+          start_row=row
+
+    if len(vertical)<2 and len(horizontal)<2:continue
+    
+    #as an experiment, run OCR on all vertical columns independently, allowing us to ignore
+    #furigana columns when found (columns to the right of columsn that are at least 2x wider)
+    '''
+    for i,col in enumerate(vertical):
+      #is this furigana?
+      if i < len(vertical)-1:
+        w_current = col[1].stop-col[1].start
+        w_next = vertical[i+1][1].stop-vertical[i+1][1].start
+        if w_current < 0.5*w_next:
+          #this is probably furigana, continue
+          continue
+      col_w= col[1].stop-col[1].start
+      col_h= col[0].stop-col[0].start
+      col_x = col[1].start
+      col_y = col[0].start
+      #do OCR on this column only
+      api = tesseract.TessBaseAPI()
+      api.Init(".","jpn",tesseract.OEM_DEFAULT)
+      #handle single column lines as "vertical align" and Auto segmentation otherwise
+      #if len(vertical)<2:
+      api.SetPageSegMode(5)#tesseract.PSM_VERTICAL_ALIGN)#PSM_AUTO)#PSM_SINGLECHAR)#
+      #else:
+      #  api.SetPageSegMode(tesseract.PSM_AUTO)#PSM_SINGLECHAR)#
+      api.SetVariable('chop_enable','T')
+      api.SetVariable('use_new_state_cost','F')
+      api.SetVariable('segment_segcost_rating','F')
+      api.SetVariable('enable_new_segsearch','0')
+      api.SetVariable('language_model_ngram_on','0')
+      api.SetVariable('textord_force_make_prop_words','F')
+      api.SetVariable('tessedit_char_blacklist', '}><L')
+      
+      gray = cv2.cv.CreateImage((col_w,col_h), 8, 1)
+      #cv2.cv.SetImageROI(binary,((x,y),(width,height))
+      sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (col_x, col_y, col_w, col_h))
+      #cv2.cv.copy(sub,gray)
+      cv2.cv.Copy(sub,gray)
+      #cv2.cv.CvtColor(cv2.cv.fromarray(img), gray, cv2.cv.CV_BGR2GRAY)
+      tesseract.SetCvImage(gray, api)
+      #api.SetImage("image",binary)#,w,h,0)#channel1)#,channel1)
+      txt=api.GetUTF8Text()
+      #txt=api.GetHOCRText(0)
+      conf=api.MeanTextConf()
+      #cv2.putText(img, str(conf), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
+      #image=None
+      #print "> %s"%txt
+      #print "***%d %%***"%conf
+    '''
+
+    '''
+      from http://code.google.com/p/tesseract-ocr/wiki/ControlParams
+      Useful parameters for Japanese and Chinese
+
+      Some Japanese tesseract user found these parameters helpful for increasing tesseract-ocr (3.02) accuracy for Japanese :
+
+      Name 	Suggested value 	Description
+      chop_enable 	T 	Chop enable.
+      use_new_state_cost 	F 	Use new state cost heuristics for segmentation state evaluation
+      segment_segcost_rating 	F 	Incorporate segmentation cost in word rating?
+      enable_new_segsearch 	0 	Enable new segmentation search path.
+      language_model_ngram_on 	0 	Turn on/off the use of character ngram model.
+      textord_force_make_prop_words 	F 	Force proportional word segmentation on all rows. 
+    '''
+    #now run OCR on this bounding box
+    api = tesseract.TessBaseAPI()
+    api.Init(".","jpn",tesseract.OEM_DEFAULT)
+    #handle single column lines as "vertical align" and Auto segmentation otherwise
+    if len(vertical)<2:
+      api.SetPageSegMode(5)#tesseract.PSM_VERTICAL_ALIGN)#PSM_AUTO)#PSM_SINGLECHAR)#
+    else:
+      api.SetPageSegMode(tesseract.PSM_AUTO)#PSM_SINGLECHAR)#
+    api.SetVariable('chop_enable','T')
+    api.SetVariable('use_new_state_cost','F')
+    api.SetVariable('segment_segcost_rating','F')
+    api.SetVariable('enable_new_segsearch','0')
+    api.SetVariable('language_model_ngram_on','0')
+    api.SetVariable('textord_force_make_prop_words','F')
+    api.SetVariable('tessedit_char_blacklist', '}><L')
+    
+    gray = cv2.cv.CreateImage((w,h), 8, 1)
+    #cv2.cv.SetImageROI(binary,((x,y),(width,height))
+    sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
+    #cv2.cv.copy(sub,gray)
+    cv2.cv.Copy(sub,gray)
+    #cv2.cv.CvtColor(cv2.cv.fromarray(img), gray, cv2.cv.CV_BGR2GRAY)
+    tesseract.SetCvImage(gray, api)
+    #api.SetImage("image",binary)#,w,h,0)#channel1)#,channel1)
+    txt=api.GetUTF8Text()
+    #txt=api.GetHOCRText(0)
+    conf=api.MeanTextConf()
+    #cv2.putText(img, str(conf), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
+    #image=None
+    print ": %s"%txt
+    print "*** %d %%***"%conf
+
+
+if __name__ == '__main__':
+
+  #this experiment relies upon a single input argument
+  if len(sys.argv)<2:
+    print 'USAGE ocr_on_bounding_boxes.py <input image name>'
+    sys.exit(-1)
+
+  img = cv2.imread(sys.argv[1])
+  (h,w,d)=img.shape
+
+  #convert to single channel grayscale, and form scaled and unscaled binary images
+  #we scale the binary image to have a copy with tones (zip-a-tones) removed
+  #and we form a binary image that's unscaled for use in final masking
+  gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+  #scaled = cv2.pyrUp(cv2.pyrDown(gray,dstsize=(w/2, h/2)),dstsize=(w, h))
+  #(binthresh,binary) = cv2.threshold(scaled, 190, 255, cv2.THRESH_BINARY_INV )
+  (binthresh_gray,binary) = cv2.threshold(gray, 190, 255, cv2.THRESH_BINARY_INV )
+  
+  #Draw out statistics on average connected component size in the rescaled, binary image
+  components = cc.get_connected_components(binary)
+  sorted_components = sorted(components,key=cc.area_bb)
+  #sorted_components = sorted(components,key=lambda x:area_nz(x,binary))
+  areas = zeros(binary.shape)
+  for component in sorted_components:
+    if amax(areas[component])>0: continue
+    areas[component] = cc.area_bb(component)**0.5
+    #areas[component]=area_nz(component,binary)
+  average_size = median(areas[(areas>3)&(areas<100)])
+  #average_size = median(areas[areas>3])
+  print 'Average area of component is: ' + str(average_size)
+
+  #use multiple of average size as vertical threshold for run length smoothing
+  vertical_smoothing_threshold = 0.75*average_size
+  horizontal_smoothing_threshold = 0.75*average_size
+
+  run_length_smoothed_or = rls.RLSO(binary, horizontal_smoothing_threshold, vertical_smoothing_threshold)
+
+  components = cc.get_connected_components(run_length_smoothed_or)
+
+  #perhaps do more strict filtering of connected components because sections of characters
+  #will not be dripped from run length smoothed areas? Yes. Results quite good.
+  filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
+
+  #Attempt to segment CCs into vertical and horizontal lines
+  #(horizontal_lines, vertical_lines, unk_lines) = segment_into_lines(binary,img,filtered,average_size)
+  #draw_bounding_boxes(img,horizontal_lines,color=(0,0,255),line_size=2)
+  #draw_2d_slices(img, horizontal_lines, color=(0,0,255))
+  #draw_bounding_boxes(img,vertical_lines,color=(0,255,0),line_size=2)
+  #draw_2d_slices(img,vertical_lines,color=(0,255,0))
+  #draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
+  #draw_2d_slices(img,unk_lines,color=(255,0,0))
+  ocr_on_bounding_boxes(binary, filtered)
+  
+
+  #draw_bounding_boxes(img,filtered)
+  cv2.imshow('img',img)
+  cv2.imwrite('segmented.png',img)
+
+  cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)
+  cv2.imwrite('run_length_smoothed.png',run_length_smoothed_or)
+  #cv2.imwrite('cleaned.png',cleaned)
+
+  if cv2.waitKey(0) == 27:
+    cv2.destroyAllWindows()
+  cv2.destroyAllWindows()

@@ -28,66 +28,11 @@ import numpy as np
 import cv2
 import sys
 import scipy.ndimage
-from pylab import zeros,amax,median
 import argparse
 import os
 
-def area_bb(a):
-  return np.prod([max(x.stop-x.start,0) for x in a[:2]])
-def area_nz(slice, image):
-  return np.count_nonzero(image[slice])
+import connected_components as cc
 
-def get_connected_components(image):
-  s = scipy.ndimage.morphology.generate_binary_structure(2,2)
-  labels,n = scipy.ndimage.measurements.label(image,structure=s)
-  objects = scipy.ndimage.measurements.find_objects(labels)
-  return objects  
-
-def bounding_boxes(image,connected_components,max_size,min_size):
-  mask = zeros(image.shape,'B')
-  for component in connected_components:
-    if area_bb(component)**.5<min_size: continue
-    if area_bb(component)**.5>max_size: continue
-    #a = area_nz(component,image)
-    #if a<min_size: continue
-    #if a>max_size: continue
-    mask[component] = 1
-  return mask
-
-def cc_masks(image,connected_components,max_size,min_size):
-  mask = zeros(image.shape,'B')
-  for component in connected_components:
-    if area_bb(component)**.5<min_size: continue
-    if area_bb(component)**.5>max_size: continue
-    #a = area_nz(component,image)
-    #if a<min_size: continue
-    #if a>max_size: continue
-    #print str(image[component])
-    mask[component] = image[component]>0
-    #print str(mask[component])
-  return mask
-
-def draw_bounding_boxes(img,connected_components,max_size,min_size,color=(0,0,255),line_size=2):
-  for component in connected_components:
-    if area_bb(component)**0.5<min_size: continue
-    if area_bb(component)**0.5>max_size: continue
-    #a = area_nz(component,img)
-    #if a<min_size: continue
-    #if a>max_size: continue
-    (ys,xs)=component[:2]
-    cv2.rectangle(img,(xs.start,ys.start),(xs.stop,ys.stop),color,line_size)
-
-def filter_by_black_white_ratio(img,connected_components,maximum=1.0,minimum=0.0):
-  filtered = []
-  for component in connected_components:
-    black = area_nz(component,img)
-    a = area_bb(component) 
-    percent_black = float(black)/float(a)
-    if percent_black < minimum or percent_black > maximum:
-      print 'component removed for percent ' + str(percent_black)
-      continue
-    filtered.append(component)
-  return filtered
 
 def clean_page(img, max_scale=4.0, min_scale=0.15):
   #img = cv2.imread(sys.argv[1])
@@ -101,19 +46,19 @@ def clean_page(img, max_scale=4.0, min_scale=0.15):
   binary = binarize(gray)
   
   #Draw out statistics on average connected component size in the rescaled, binary image
-  average_size = average_CC_size(gaussian_binary)
+  average_size = cc.average_size(gaussian_binary)
   #print 'Initial mask average size is ' + str(average_size)
   max_size = average_size*max_scale
   min_size = average_size*min_scale
 
   #primary mask is connected components filtered by size
-  mask = form_CC_mask(gaussian_binary, max_size, min_size)
+  mask = cc.form_mask(gaussian_binary, max_size, min_size)
 
   #secondary mask is formed from canny edges
   canny_mask = form_canny_mask(gaussian_filtered, mask=mask)
 
   #final mask is size filtered connected components on canny mask
-  final_mask = form_CC_mask(canny_mask, max_size, min_size)
+  final_mask = cc.form_mask(canny_mask, max_size, min_size)
   
   #apply mask and return images
   cleaned = cv2.bitwise_not(final_mask * binary)
@@ -130,25 +75,6 @@ def grayscale(img):
 def binarize(img, threshold=190, white=255):
   (t,binary) = cv2.threshold(img, threshold, white, cv2.THRESH_BINARY_INV )
   return binary
-
-def average_CC_size(img):
-  components = get_connected_components(img)
-  sorted_components = sorted(components,key=area_bb)
-  #sorted_components = sorted(components,key=lambda x:area_nz(x,binary))
-  areas = zeros(img.shape)
-  for component in sorted_components:
-    if amax(areas[component])>0: continue
-    areas[component] = area_bb(component)**0.5
-    #areas[component]=area_nz(component,binary)
-  average_size = median(areas[(areas>3)&(areas<100)])
-  return average_size
-
-def form_CC_mask(img, max_size, min_size):
-  components = get_connected_components(img)
-  sorted_components = sorted(components,key=area_bb)
-  mask = bounding_boxes(img,sorted_components,max_size,min_size)
-  #mask = cc_masks(img,sorted_components,max_size,min_size)
-  return mask
 
 def form_canny_mask(img, mask=None):
   edges = cv2.Canny(img, 128, 255, apertureSize=3)
