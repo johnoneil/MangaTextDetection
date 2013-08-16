@@ -29,6 +29,8 @@ import cv2
 import sys
 import scipy.ndimage
 from pylab import zeros,amax,median
+import argparse
+import os
 
 def area_bb(a):
   return np.prod([max(x.stop-x.start,0) for x in a[:2]])
@@ -60,6 +62,7 @@ def cc_masks(image,connected_components,max_size,min_size):
     #a = area_nz(component,image)
     #if a<min_size: continue
     #if a>max_size: continue
+    #print str(image[component])
     mask[component] = image[component]>0
     #print str(mask[component])
   return mask
@@ -99,8 +102,9 @@ def clean_page(img, max_scale=4.0, min_scale=0.15):
   
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = average_CC_size(gaussian_binary)
-  max_size = average_size*4.0
-  min_size = average_size*0.15
+  #print 'Initial mask average size is ' + str(average_size)
+  max_size = average_size*max_scale
+  min_size = average_size*min_scale
 
   #primary mask is connected components filtered by size
   mask = form_CC_mask(gaussian_binary, max_size, min_size)
@@ -112,7 +116,7 @@ def clean_page(img, max_scale=4.0, min_scale=0.15):
   final_mask = form_CC_mask(canny_mask, max_size, min_size)
   
   #apply mask and return images
-  cleaned = cv2.bitwise_not(final_mask * cv2.bitwise_not(gray))
+  cleaned = cv2.bitwise_not(final_mask * binary)
   return (cv2.bitwise_not(binary), final_mask, cleaned)
 
 def clean_image_file(filename):
@@ -143,6 +147,7 @@ def form_CC_mask(img, max_size, min_size):
   components = get_connected_components(img)
   sorted_components = sorted(components,key=area_bb)
   mask = bounding_boxes(img,sorted_components,max_size,min_size)
+  #mask = cc_masks(img,sorted_components,max_size,min_size)
   return mask
 
 def form_canny_mask(img, mask=None):
@@ -154,28 +159,55 @@ def form_canny_mask(img, mask=None):
   temp_mask = np.zeros(img.shape,np.uint8)
   for c in contours:
     #also draw detected contours into the original image in green
-    cv2.drawContours(img,[c],0,(0,255,0),1)
+    #cv2.drawContours(img,[c],0,(0,255,0),1)
     hull = cv2.convexHull(c)
     cv2.drawContours(temp_mask,[hull],0,255,-1)
+    #cv2.drawContours(temp_mask,[c],0,255,-1)
+    #polygon = cv2.approxPolyDP(c,0.1*cv2.arcLength(c,True),True)
+    #cv2.drawContours(temp_mask,[polygon],0,255,-1)
   return temp_mask
 
 
 if __name__ == '__main__':
 
-  #this experiment relies upon a single input argument
-  if len(sys.argv)<2:
-    print 'USAGE clean_page <input image name>'
+  parser = argparse.ArgumentParser(description='Clean raw Manga scan image.')
+  parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
+  parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
+  parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
+  parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
+  parser.add_argument('--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
+  
+  args = parser.parse_args()
+  infile = args.infile
+  outfile = infile + '.cleaned.png'
+  if args.outfile is not None:
+    outfile = args.outfile
+  binary_outfile = infile + '.binary.png'
+  if args.binary is not None:
+    binary_outfile = args.binary
+  mask = args.mask
+
+  if not os.path.isfile(infile):
+    print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
-  
-  (binary,mask,cleaned) = clean_image_file(sys.argv[1])
-  
 
-  cv2.imshow('binary',binary)
-  #cv2.imshow('mask',mask)
-  cv2.imshow('cleaned',cleaned)
-  cv2.imwrite(sys.argv[1]+'.binary.png', binary)
-  cv2.imwrite(sys.argv[1]+'.cleaned.png',cleaned)
+  if args.verbose:
+    print '\tProcessing file ' + infile
+    print '\tGenerating output ' + outfile
 
+  (binary,mask,cleaned) = clean_image_file(infile)
+
+  cv2.imwrite(outfile,cleaned)
+  if binary is not None:
+    cv2.imwrite(binary_outfile, binary)
+  
+  if args.display:
+    cv2.imshow('Binary',binary)
+    cv2.imshow('Cleaned',cleaned)
+    if args.mask is not None:
+      cv2.imshow('Mask',mask)
   if cv2.waitKey(0) == 27:
     cv2.destroyAllWindows()
   cv2.destroyAllWindows()
+
