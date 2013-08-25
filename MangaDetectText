@@ -1,0 +1,112 @@
+#!/usr/bin/python
+# vim: set ts=2 expandtab:
+"""
+Module: ocr
+Desc:
+Author: John O'Neil
+Email: oneil.john@gmail.com
+DATE: Saturday, August 25th 2013
+
+  Front to back end Manga text detection.
+  Input is image file of raw manga image
+  Output is HTML page annotating image with detected text.
+  
+"""
+#import clean_page as clean
+import connected_components as cc
+import run_length_smoothing as rls
+import clean_page as clean
+import ocr
+
+import numpy as np
+import cv2
+import sys
+import argparse
+import os
+import scipy.ndimage
+#from pylab import zeros,amax,median
+
+
+if __name__ == '__main__':
+
+  parser = argparse.ArgumentParser(description='Generate HTML annotation for raw manga scan with detected OCR\'d text.')
+  parser.add_argument('infile', help='Input (color) raw Manga scan image to annoate.')
+  parser.add_argument('-o','--output', dest='outfile', help='Output html file.')
+  #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
+  #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
+  parser.add_argument('--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
+  
+  args = parser.parse_args()
+  infile = args.infile
+  outfile = infile + '.html'
+  if args.outfile is not None:
+    outfile = args.outfile
+
+  img = cv2.imread(sys.argv[1])
+  (h,w)=img.shape[:2]
+
+  gray = clean.grayscale(img)
+
+  gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=1.5)
+  gaussian_binary = clean.binarize(gaussian_filtered)
+  average_size = cc.average_size(gaussian_binary)
+
+  (binary,mask,cleaned) = clean.clean_image_file(infile)
+
+  #use multiple of average size as vertical threshold for run length smoothing
+  vertical_smoothing_threshold = 0.75*average_size
+  horizontal_smoothing_threshold = 0.75*average_size
+
+  inv_cleaned = cv2.bitwise_not(cleaned)
+  inv_binary = cv2.bitwise_not(binary)
+  run_length_smoothed_or = rls.RLSO(inv_cleaned, horizontal_smoothing_threshold, vertical_smoothing_threshold)
+
+  components = cc.get_connected_components(run_length_smoothed_or)
+
+  #perhaps do more strict filtering of connected components because sections of characters
+  #will not be dripped from run length smoothed areas? Yes. Results quite good.
+  filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
+
+  #Build html page with image
+  from django.template import Template, Context
+  from django.conf import settings
+  from django.template.loader import render_to_string
+  settings.configure()
+  blurbs = ocr.ocr_on_bounding_boxes(inv_binary, filtered)
+  template = u'''
+  <html>
+  <head>
+  <title>{{ image }}</title>
+  </head>
+  <body>
+    <h1>{{ image }}.</h1>
+    <img src="{{ image }}" alt="{{ image }}"/>
+    {% for blurb in blurbs %}
+      {{ blurb.confidence }} - {{ blurb.text }}<br>
+      <hl>
+    {% endfor %}
+  </body>
+  </html>
+  '''
+
+  t = Template(template)
+  c = Context({"image": infile,
+              "blurbs":blurbs})
+  #print t.render(c)
+  #for blurb in blurbs:
+  #  print str(blurb.confidence)+'% :'+ blurb.text
+  #open(outfile, "w").write(render_to_string(template, c))
+  open(outfile, "w").write(t.render(c).encode("utf-8"))
+  
+  
+  if args.display:
+    cv2.imshow('img',img)
+    #cv2.imwrite('segmented.png',img)
+    cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)
+    #cv2.imwrite('run_length_smoothed.png',run_length_smoothed_or)
+    #cv2.imwrite('cleaned.png',cleaned)
+
+    if cv2.waitKey(0) == 27:
+      cv2.destroyAllWindows()
+    cv2.destroyAllWindows()

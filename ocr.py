@@ -23,6 +23,15 @@ from pylab import zeros,amax,median
 
 import tesseract
 
+class Blurb(object):
+  def __init__(self, x, y, w, h, text, confidence=100.0):
+    self.x=x
+    self.y=y
+    self.w=w
+    self.h=h
+    self.text = text
+    self.confidence = confidence
+
 def draw_2d_slices(img,slices,color=(0,0,255),line_size=2):
   for entry in slices:
     vert=entry[0]
@@ -103,6 +112,7 @@ def ocr_on_bounding_boxes(img, components):
   #horizontal_lines = []
   #vertical_lines = []
   #unk_lines = []
+  blurbs = []
   for cc in components:
     #horizontal and vertical histogram of nonzero pixels through each section
     #just look for completely white sections first.
@@ -113,8 +123,8 @@ def ocr_on_bounding_boxes(img, components):
     x = xs.start
     y = ys.start
     aspect = float(w)/float(h)
-    print "..............."
-    print " w:" + str(w) +" h:" +str(h)+ "at: " +str(x)+","+str(y)
+    #print "..............."
+    #print " w:" + str(w) +" h:" +str(h)+ "at: " +str(x)+","+str(y)
 
     #detect vertical columns of non-zero pixels
     vertical = []
@@ -150,54 +160,6 @@ def ocr_on_bounding_boxes(img, components):
           start_row=row
 
     if len(vertical)<2 and len(horizontal)<2:continue
-    
-    #as an experiment, run OCR on all vertical columns independently, allowing us to ignore
-    #furigana columns when found (columns to the right of columsn that are at least 2x wider)
-    '''
-    for i,col in enumerate(vertical):
-      #is this furigana?
-      if i < len(vertical)-1:
-        w_current = col[1].stop-col[1].start
-        w_next = vertical[i+1][1].stop-vertical[i+1][1].start
-        if w_current < 0.5*w_next:
-          #this is probably furigana, continue
-          continue
-      col_w= col[1].stop-col[1].start
-      col_h= col[0].stop-col[0].start
-      col_x = col[1].start
-      col_y = col[0].start
-      #do OCR on this column only
-      api = tesseract.TessBaseAPI()
-      api.Init(".","jpn",tesseract.OEM_DEFAULT)
-      #handle single column lines as "vertical align" and Auto segmentation otherwise
-      #if len(vertical)<2:
-      api.SetPageSegMode(5)#tesseract.PSM_VERTICAL_ALIGN)#PSM_AUTO)#PSM_SINGLECHAR)#
-      #else:
-      #  api.SetPageSegMode(tesseract.PSM_AUTO)#PSM_SINGLECHAR)#
-      api.SetVariable('chop_enable','T')
-      api.SetVariable('use_new_state_cost','F')
-      api.SetVariable('segment_segcost_rating','F')
-      api.SetVariable('enable_new_segsearch','0')
-      api.SetVariable('language_model_ngram_on','0')
-      api.SetVariable('textord_force_make_prop_words','F')
-      api.SetVariable('tessedit_char_blacklist', '}><L')
-      
-      gray = cv2.cv.CreateImage((col_w,col_h), 8, 1)
-      #cv2.cv.SetImageROI(binary,((x,y),(width,height))
-      sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (col_x, col_y, col_w, col_h))
-      #cv2.cv.copy(sub,gray)
-      cv2.cv.Copy(sub,gray)
-      #cv2.cv.CvtColor(cv2.cv.fromarray(img), gray, cv2.cv.CV_BGR2GRAY)
-      tesseract.SetCvImage(gray, api)
-      #api.SetImage("image",binary)#,w,h,0)#channel1)#,channel1)
-      txt=api.GetUTF8Text()
-      #txt=api.GetHOCRText(0)
-      conf=api.MeanTextConf()
-      #cv2.putText(img, str(conf), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
-      #image=None
-      #print "> %s"%txt
-      #print "***%d %%***"%conf
-    '''
 
     '''
       from http://code.google.com/p/tesseract-ocr/wiki/ControlParams
@@ -230,20 +192,19 @@ def ocr_on_bounding_boxes(img, components):
     api.SetVariable('tessedit_char_blacklist', '}><L')
     
     gray = cv2.cv.CreateImage((w,h), 8, 1)
-    #cv2.cv.SetImageROI(binary,((x,y),(width,height))
     sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
-    #cv2.cv.copy(sub,gray)
     cv2.cv.Copy(sub,gray)
-    #cv2.cv.CvtColor(cv2.cv.fromarray(img), gray, cv2.cv.CV_BGR2GRAY)
     tesseract.SetCvImage(gray, api)
-    #api.SetImage("image",binary)#,w,h,0)#channel1)#,channel1)
     txt=api.GetUTF8Text()
-    #txt=api.GetHOCRText(0)
     conf=api.MeanTextConf()
-    #cv2.putText(img, str(conf), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
-    #image=None
-    print ": %s"%txt
-    print "*** %d %%***"%conf
+    if conf>0:
+      blurb = Blurb(x, y, w, h, txt, confidence=conf)
+      blurbs.append(blurb)
+
+    #print ": %s"%txt
+    #print "*** %d %%***"%conf
+
+  return blurbs
 
 
 if __name__ == '__main__':
@@ -275,7 +236,7 @@ if __name__ == '__main__':
     #areas[component]=area_nz(component,binary)
   average_size = median(areas[(areas>3)&(areas<100)])
   #average_size = median(areas[areas>3])
-  print 'Average area of component is: ' + str(average_size)
+  #print 'Average area of component is: ' + str(average_size)
 
   #use multiple of average size as vertical threshold for run length smoothing
   vertical_smoothing_threshold = 0.75*average_size
@@ -297,7 +258,9 @@ if __name__ == '__main__':
   #draw_2d_slices(img,vertical_lines,color=(0,255,0))
   #draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
   #draw_2d_slices(img,unk_lines,color=(255,0,0))
-  ocr_on_bounding_boxes(binary, filtered)
+  blurbs = ocr_on_bounding_boxes(binary, filtered)
+  for blurb in blurbs:
+    print str(blurb.confidence)+'% :'+ blurb.text
   
 
   #draw_bounding_boxes(img,filtered)
