@@ -81,11 +81,34 @@ if __name__ == '__main__':
   </head>
   <body>
     <h1>{{ image }}.</h1>
-    <img src="{{ image }}" alt="{{ image }}"/>
-    {% for blurb in blurbs %}
-      {{ blurb.confidence }} - {{ blurb.text }}<br>
-      <hl>
-    {% endfor %}
+    <table border="1" width="100%">
+      <tr>
+        <th>Image</th>
+        <th>blurbs</th>
+      </tr>
+      <tr valign="top">
+        <td>
+          <img src="{{ image }}" alt="{{ image }}" width="700"/>
+        </td>
+        <td>
+          <table>
+              {% for blurb in blurbs %}
+              <tr>
+              {{ blurb.confidence }}%: {{ blurb.text }}<br>
+              </tr>
+              {% endfor %}
+          <table>
+        </td>
+      </tr>
+    </table> 
+    
+
+    <svg>
+      <ellipse cx="50" cy="51" rx="50" ry="30" fill="rgb(0,0,0)"/>
+      <ellipse cx="145" cy="37" rx="50" ry="30" fill="rgb(237, 128, 39)"/>
+      <ellipse cx="60" cy="47" rx="30" ry="17" fill="rgb(255, 255, 255)"/>
+      <ellipse cx="132" cy="40" rx="30" ry="17" fill="rgb(255, 255, 255)"/>
+    </svg>
   </body>
   </html>
   '''
