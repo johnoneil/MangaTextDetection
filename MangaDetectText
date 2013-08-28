@@ -24,10 +24,13 @@ import sys
 import argparse
 import os
 import scipy.ndimage
+import datetime
 #from pylab import zeros,amax,median
 
 
 if __name__ == '__main__':
+
+  proc_start_time = datetime.datetime.now()
 
   parser = argparse.ArgumentParser(description='Generate HTML annotation for raw manga scan with detected OCR\'d text.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to annoate.')
@@ -65,7 +68,7 @@ if __name__ == '__main__':
   components = cc.get_connected_components(run_length_smoothed_or)
 
   #perhaps do more strict filtering of connected components because sections of characters
-  #will not be dripped from run length smoothed areas? Yes. Results quite good.
+  #will not be dropped from run length smoothed areas? Yes. Results quite good.
   filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
 
   #Build html page with image
@@ -74,6 +77,12 @@ if __name__ == '__main__':
   from django.template.loader import render_to_string
   settings.configure()
   blurbs = ocr.ocr_on_bounding_boxes(inv_binary, filtered)
+
+  proc_stop_time = datetime.datetime.now()
+  processing_time = proc_stop_time - proc_start_time
+  #print 'proc time ' + str(processing_time.total_seconds())
+
+
   template = u'''
   <html>
   <head>
@@ -89,12 +98,13 @@ if __name__ == '__main__':
   </head>
   <body>
     <h1>{{ image }}.</h1>
+    <p>Page rendered on {% now "r" %} in {{ processing_time }} seconds</p>
     <table>
       <tr valign="top">
         <td>
           <img src="{{ image }}" alt="{{ image }}" class="annotatable" id="manga_page"/>
         </td>
-        <td width="200">
+        <td width="500">
           <table>
               {% for blurb in blurbs %}
               <tr>
@@ -137,7 +147,8 @@ if __name__ == '__main__':
 
   t = Template(template)
   c = Context({"image": infile,
-              "blurbs":blurbs})
+              "blurbs":blurbs,
+              "processing_time":processing_time.total_seconds()})
   #print t.render(c)
   #for blurb in blurbs:
   #  print str(blurb.confidence)+'% :'+ blurb.text
