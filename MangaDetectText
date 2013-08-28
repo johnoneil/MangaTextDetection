@@ -77,38 +77,60 @@ if __name__ == '__main__':
   template = u'''
   <html>
   <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>{{ image }}</title>
+    <link type="text/css" rel="stylesheet" href="http://annotorious.github.com/latest/annotorious.css" />
+    <script type="text/javascript" src="http://annotorious.github.com/latest/annotorious.min.js"></script>
+    <script>
+      //anno.addPlugin('ExamplePlugin', {});
+
+      
+    </script>  
   </head>
   <body>
     <h1>{{ image }}.</h1>
-    <table border="1" width="100%">
-      <tr>
-        <th>Image</th>
-        <th>blurbs</th>
-      </tr>
+    <table>
       <tr valign="top">
         <td>
-          <img src="{{ image }}" alt="{{ image }}" width="700"/>
+          <img src="{{ image }}" alt="{{ image }}" class="annotatable" id="manga_page"/>
         </td>
-        <td>
+        <td width="200">
           <table>
               {% for blurb in blurbs %}
               <tr>
-              {{ blurb.confidence }}%: {{ blurb.text }}<br>
+              {{ blurb.confidence }}%: {{ blurb.text|linebreaksbr }}<br>
               </tr>
               {% endfor %}
           <table>
         </td>
       </tr>
     </table> 
-    
+<script>
+      function AddBlurb(image, X, Y, W, H, blurb)
+      {
+        var annotation = {
+          //image URL
+          src : document.getElementById('manga_page').src,
+          text : blurb,
 
-    <svg>
-      <ellipse cx="50" cy="51" rx="50" ry="30" fill="rgb(0,0,0)"/>
-      <ellipse cx="145" cy="37" rx="50" ry="30" fill="rgb(237, 128, 39)"/>
-      <ellipse cx="60" cy="47" rx="30" ry="17" fill="rgb(255, 255, 255)"/>
-      <ellipse cx="132" cy="40" rx="30" ry="17" fill="rgb(255, 255, 255)"/>
-    </svg>
+          shapes : [{
+          type : 'rect',
+          units: 'pixel',
+          geometry : { x : X, y: Y, width : W, height: H }
+
+          //editable : false
+          }]
+          }
+        anno.addAnnotation(annotation);//, opt_replace);
+      }
+
+      window.onload = function() {
+        {% for blurb in blurbs %}
+        AddBlurb( "{{ image }}", {{ blurb.x }}, {{ blurb.y }}, {{ blurb.w }}, {{ blurb.h }}, "{{ blurb.text|linebreaksbr }}" );
+        {% endfor %}
+      }
+
+    </script>
   </body>
   </html>
   '''
