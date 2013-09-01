@@ -31,9 +31,9 @@ parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.
 parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
 #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
 #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
-parser.add_argument('--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
 parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
-parser.add_argument('--debug', help='Overlay input image into output.', action="store_true")
+parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
 parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
 parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
 args = None
@@ -56,7 +56,17 @@ def segment_image(img, max_scale=4.0, min_scale=0.15):
   binary_average_size = cc.average_size(binary)
   if args and args.verbose:
     print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
-  sigma = math.sqrt(float(binary_average_size))/3.0
+  '''
+  The necessary sigma needed for Gaussian filtering (to remove screentones and other noise) seems
+  to be a function of the resolution the manga was scanned at (or original page size, I'm not sure).
+  Assuming 'normal' page size for a phonebook style Manga is 17.5cmx11.5cm (6.8x4.5in).
+  A scan of 300dpi will result in an image about 2000x1350, which requires a sigma of 1.5 to 1.8.
+  I'm encountering many smaller images that may be nonstandard scanning dpi values or just smaller
+  magazines. Haven't found hard info on this yet. They require sigma values of about 0.5 to 0.7.
+  I'll therefore (for now) just calculate required (nonspecified) sigma as a linear function of vertical
+  image resolution.
+  '''
+  sigma = (1.0/676.0)*float(h)-1.3
   if args and args.sigma:
     sigma = args.sigma
   if args and args.verbose:
