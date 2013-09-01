@@ -24,23 +24,23 @@ def area_nz(slice, image):
 
 def get_connected_components(image):
   s = scipy.ndimage.morphology.generate_binary_structure(2,2)
-  labels,n = scipy.ndimage.measurements.label(image,structure=s)
+  labels,n = scipy.ndimage.measurements.label(image)#,structure=s)
   objects = scipy.ndimage.measurements.find_objects(labels)
   return objects  
 
 def bounding_boxes(image,connected_components,max_size,min_size):
-  mask = zeros(image.shape,'B')
+  mask = np.zeros(image.shape,'B')#np.uint8)#'B')
   for component in connected_components:
     if area_bb(component)**.5<min_size: continue
     if area_bb(component)**.5>max_size: continue
     #a = area_nz(component,image)
     #if a<min_size: continue
     #if a>max_size: continue
-    mask[component] = 1
+    mask[component] = 1#255
   return mask
 
 def masks(image,connected_components,max_size,min_size):
-  mask = zeros(image.shape,'B')
+  mask = zeros(image.shape,np.uint8)#,'B')
   for component in connected_components:
     if area_bb(component)**.5<min_size: continue
     if area_bb(component)**.5>max_size: continue

@@ -17,6 +17,7 @@ import connected_components as cc
 import run_length_smoothing as rls
 import clean_page as clean
 import ocr
+import segmentation as seg
 
 import numpy as np
 import cv2
@@ -47,36 +48,25 @@ if __name__ == '__main__':
     outfile = args.outfile
 
   img = cv2.imread(sys.argv[1])
-  (h,w)=img.shape[:2]
-
   gray = clean.grayscale(img)
+  inv_binary = cv2.bitwise_not(clean.binarize(gray))
 
-  gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=1.5)
-  gaussian_binary = clean.binarize(gaussian_filtered)
-  average_size = cc.average_size(gaussian_binary)
+  segmented_image = seg.segment_image(img)
 
-  (binary,mask,cleaned) = clean.clean_image_file(infile)
-
-  #use multiple of average size as vertical threshold for run length smoothing
-  vertical_smoothing_threshold = 0.75*average_size
-  horizontal_smoothing_threshold = 0.75*average_size
-
-  inv_cleaned = cv2.bitwise_not(cleaned)
-  inv_binary = cv2.bitwise_not(binary)
-  run_length_smoothed_or = rls.RLSO(inv_cleaned, horizontal_smoothing_threshold, vertical_smoothing_threshold)
-
-  components = cc.get_connected_components(run_length_smoothed_or)
+  #text columns are in the 3rd channel
+  columns = segmented_image[:,:,2]
+  components = cc.get_connected_components(columns)
 
   #perhaps do more strict filtering of connected components because sections of characters
   #will not be dropped from run length smoothed areas? Yes. Results quite good.
-  filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
+  #filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
 
   #Build html page with image
   from django.template import Template, Context
   from django.conf import settings
   from django.template.loader import render_to_string
   settings.configure()
-  blurbs = ocr.ocr_on_bounding_boxes(inv_binary, filtered)
+  blurbs = ocr.ocr_on_bounding_boxes(inv_binary, components)
 
   proc_stop_time = datetime.datetime.now()
   processing_time = proc_stop_time - proc_start_time
@@ -88,8 +78,8 @@ if __name__ == '__main__':
   <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>{{ image }}</title>
-    <link type="text/css" rel="stylesheet" href="http://annotorious.github.com/latest/annotorious.css" />
-    <script type="text/javascript" src="http://annotorious.github.com/latest/annotorious.min.js"></script>
+    <link type="text/css" rel="stylesheet" href="annotorious.css" />
+    <script type="text/javascript" src="annotorious.min.js"></script>
     <script>
       //anno.addPlugin('ExamplePlugin', {});
 

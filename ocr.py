@@ -32,134 +32,92 @@ class Blurb(object):
     self.text = text
     self.confidence = confidence
 
-def draw_2d_slices(img,slices,color=(0,0,255),line_size=2):
+def draw_2d_slices(img,slices,color=(0,0,255),line_size=1):
   for entry in slices:
     vert=entry[0]
     horiz=entry[1]
     cv2.rectangle(img,(horiz.start,vert.start),(horiz.stop,vert.stop),color,line_size)
 
-def segment_into_lines(img,color_image,filtered,average_size):
-  horizontal_lines = []
-  vertical_lines = []
-  unk_lines = []
-  for cc in filtered:
-    #horizontal and vertical histogram of nonzero pixels through each section
-    #just look for completely white sections first.
-    (ys,xs)=cc[:2]
-    w=xs.stop-xs.start
-    h=ys.stop-ys.start
-    x = xs.start
-    y = ys.start
-    aspect = float(w)/float(h)
+def max_width_2d_slices(lines):
+  max_width = 0
+  for line in lines:
+    width = line[1].stop - line[1].start
+    if width>max_width:
+      width = max_width
+  return max_width
 
-    #detect vertical columns of non-zero pixels
-    vertical = []
-    start_col = xs.start
-    for col in range(xs.start,xs.stop):
-      count = np.count_nonzero(img[ys.start:ys.stop,col])
-      #print str(count)
-      if count == 0 or col==(xs.stop-1):
-        #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
-        if start_col>=0:
-          width = col-start_col
-          #print 'width ' + str(width)
-          #vertical.append(img[ys.start:ys.stop,start_col:col])
-          vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
-          start_col=-1
-      else:
-        if start_col<0:
-          start_col=col
-
-    #detect horizontal rows of non-zero pixels
-    horizontal=[]
-    start_row = ys.start
-    for row in range(ys.start,ys.stop):
-      count = np.count_nonzero(img[row,xs.start:xs.stop])
-      if count == 0 or row==(ys.stop-1):
-        if start_row>=0:
-          height = row-start_row
-          #print 'height ' + str(height)
-          horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
-          start_row=-1
-      else:
-        if start_row<0:
-          start_row=row
-
-    #we've now broken up the original bounding box into possible vertical
-    #and horizontal lines.
-    #We now wish to:
-    #1) Determine if the original bounding box contains text running V or H
-    #2) Eliminate all bounding boxes (don't return them in our output lists) that
-    #   we can't explicitly say have some "regularity" in their line width/heights
-    #3) Eliminate all bounding boxes that can't be divided into v/h lines at all(???)
-    #also we will give possible vertical text runs preference as they're more common
-    if len(vertical)<2 and len(horizontal)<2:continue
-    if aspect<0.5:
-      #assume vertical text
-      vertical_lines.extend(vertical)
-      #vertical_lines.extend(horizontal)
-    elif aspect>2.0:
-      #assume horizontal text
-      horizontal_lines.extend(horizontal)
+def estimate_furigana(lines):
+  max_width = max_width_2d_slices(lines)
+  furigana = []
+  non_furigana = []
+  for line in lines:
+    width = line[1].stop - line[1].start
+    if width < max_width*0.5:
+      furigana.append(line)
     else:
-      #try to figure out if h or v
-      unk_lines.extend(horizontal)
-      unk_lines.extend(vertical)
-      
-  return (horizontal_lines, vertical_lines, unk_lines)
+      non_furigana.append(line)
+  return (furigana, non_furigana)
+
+def segment_into_lines(img,component, min_segment_threshold=2):
+  (ys,xs)=component[:2]
+  w=xs.stop-xs.start
+  h=ys.stop-ys.start
+  x = xs.start
+  y = ys.start
+  aspect = float(w)/float(h)
+
+  vertical = []
+  start_col = xs.start
+  for col in range(xs.start,xs.stop):
+    count = np.count_nonzero(img[ys.start:ys.stop,col])
+    #print str(count)
+    if count<=min_segment_threshold or col==(xs.stop-1):
+      #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+      if start_col>=0:
+        width = col-start_col
+        #print 'width ' + str(width)
+        #vertical.append(img[ys.start:ys.stop,start_col:col])
+        vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
+        start_col=-1
+    else:
+      if start_col<0:
+        start_col=col
+
+  #detect horizontal rows of non-zero pixels
+  horizontal=[]
+  start_row = ys.start
+  for row in range(ys.start,ys.stop):
+    count = np.count_nonzero(img[row,xs.start:xs.stop])
+    if count<=min_segment_threshold or row==(ys.stop-1):
+      if start_row>=0:
+        height = row-start_row
+        #print 'height ' + str(height)
+        horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
+        start_row=-1
+    else:
+      if start_row<0:
+        start_row=row
+
+  #we've now broken up the original bounding box into possible vertical
+  #and horizontal lines.
+  #We now wish to:
+  #1) Determine if the original bounding box contains text running V or H
+  #2) Eliminate all bounding boxes (don't return them in our output lists) that
+  #   we can't explicitly say have some "regularity" in their line width/heights
+  #3) Eliminate all bounding boxes that can't be divided into v/h lines at all(???)
+  #also we will give possible vertical text runs preference as they're more common
+  #if len(vertical)<2 and len(horizontal)<2:continue
+  return (aspect, vertical, horizontal)
 
 def ocr_on_bounding_boxes(img, components):
-  #horizontal_lines = []
-  #vertical_lines = []
-  #unk_lines = []
+
   blurbs = []
-  for cc in components:
-    #horizontal and vertical histogram of nonzero pixels through each section
-    #just look for completely white sections first.
-    (ys,xs)=cc[:2]
-    
-    w=xs.stop-xs.start
-    h=ys.stop-ys.start
-    x = xs.start
-    y = ys.start
-    aspect = float(w)/float(h)
-    #print "..............."
-    #print " w:" + str(w) +" h:" +str(h)+ "at: " +str(x)+","+str(y)
+  for component in components:
+    (aspect, vertical, horizontal) = segment_into_lines(img, component)
+    #if len(vertical)<2 and len(horizontal)<2:continue
 
-    #detect vertical columns of non-zero pixels
-    vertical = []
-    start_col = xs.start
-    for col in range(xs.start,xs.stop):
-      count = np.count_nonzero(img[ys.start:ys.stop,col])
-      #print str(count)
-      if count == 0 or col==(xs.stop-1):
-        #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
-        if start_col>=0:
-          width = col-start_col
-          #print 'width ' + str(width)
-          #vertical.append(img[ys.start:ys.stop,start_col:col])
-          vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
-          start_col=-1
-      else:
-        if start_col<0:
-          start_col=col
-
-    #detect horizontal rows of non-zero pixels
-    horizontal=[]
-    start_row = ys.start
-    for row in range(ys.start,ys.stop):
-      count = np.count_nonzero(img[row,xs.start:xs.stop])
-      if count == 0 or row==(ys.stop-1):
-        if start_row>=0:
-          height = row-start_row
-          #print 'height ' + str(height)
-          horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
-          start_row=-1
-      else:
-        if start_row<0:
-          start_row=row
-
-    if len(vertical)<2 and len(horizontal)<2:continue
+    #attempt to separately process furigana
+    #(furigana, non_furigana) = estimate_furigana(vertical)
 
     '''
       from http://code.google.com/p/tesseract-ocr/wiki/ControlParams
@@ -190,20 +148,38 @@ def ocr_on_bounding_boxes(img, components):
     api.SetVariable('language_model_ngram_on','0')
     api.SetVariable('textord_force_make_prop_words','F')
     api.SetVariable('tessedit_char_blacklist', '}><L')
-    
-    gray = cv2.cv.CreateImage((w,h), 8, 1)
+
+    x=component[1].start
+    y=component[0].start
+    w=component[1].stop-x
+    h=component[0].stop-y
+    roi = cv2.cv.CreateImage((w,h), 8, 1)
     sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
-    cv2.cv.Copy(sub,gray)
-    tesseract.SetCvImage(gray, api)
+    cv2.cv.Copy(sub, roi)
+    tesseract.SetCvImage(roi, api)
     txt=api.GetUTF8Text()
     conf=api.MeanTextConf()
-    if conf>0:
+    #if conf>0:
+    if True:
       blurb = Blurb(x, y, w, h, txt, confidence=conf)
       blurbs.append(blurb)
-
-    #print ": %s"%txt
-    #print "*** %d %%***"%conf
-
+    
+    '''
+    for line in non_furigana:
+      x=line[1].start
+      y=line[0].start
+      w=line[1].stop-x
+      h=line[0].stop-y
+      roi = cv2.cv.CreateImage((w,h), 8, 1)
+      sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
+      cv2.cv.Copy(sub, roi)
+      tesseract.SetCvImage(roi, api)
+      txt=api.GetUTF8Text()
+      conf=api.MeanTextConf()
+      if conf>0:
+        blurb = Blurb(x, y, w, h, txt, confidence=conf)
+        blurbs.append(blurb)
+    '''
   return blurbs
 
 
