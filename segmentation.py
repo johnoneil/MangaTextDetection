@@ -25,6 +25,7 @@ import argparse
 import os
 
 import connected_components as cc
+import furigana
 
 parser = argparse.ArgumentParser(description='Segment raw Manga scan image.')
 parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
@@ -35,23 +36,22 @@ parser.add_argument('-v','--verbose', help='Verbose operation. Print status mess
 parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
 parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
 parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
 parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
 args = None
 
 
-def segment_image(img, max_scale=4.0, min_scale=0.15):
+def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False):
   (h,w)=img.shape[:2]
 
   if(args and args.verbose):
     print 'Segmenting ' + str(h) + 'x' + str(w) + ' image.'
 
-  gray = grayscale(img)
-
   #create gaussian filtered and unfiltered binary images
   binary_threshold = 180
   if args and args.verbose:
     print 'binarizing images with threshold value of ' + str(binary_threshold)
-  binary = binarize(gray,threshold=binary_threshold)
+  binary = binarize(img,threshold=binary_threshold)
 
   binary_average_size = cc.average_size(binary)
   if args and args.verbose:
@@ -71,7 +71,7 @@ def segment_image(img, max_scale=4.0, min_scale=0.15):
     sigma = args.sigma
   if args and args.verbose:
     print 'Applying Gaussian filter with sigma (std dev) of ' + str(sigma)
-  gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=sigma)
+  gaussian_filtered = scipy.ndimage.gaussian_filter(img, sigma=sigma)
   
   gaussian_binary = binarize(gaussian_filtered,threshold=binary_threshold)
   
@@ -93,17 +93,39 @@ def segment_image(img, max_scale=4.0, min_scale=0.15):
 
   #apply mask and return images
   cleaned = cv2.bitwise_not(final_mask * binary)
+  text_only = cleaned2segmented(cleaned, average_size)
 
+  #if desired, suppress furigana characters (which interfere with OCR)
+  if suppress_furigana:
+    furigana_mask = furigana.estimate_furigana(cleaned, text_only)
+    furigana_mask = np.array(furigana_mask==0,'B')
+    cleaned = cv2.bitwise_not(cleaned)*furigana_mask
+    cleaned = cv2.bitwise_not(cleaned)
+    text_only = cleaned2segmented(cleaned, average_size)
+  
+  if args and args.debug:
+    text_only = 0.5*text_only + 0.5*img
+    #text_rows = 0.5*text_rows+0.5*gray
+    #text_colums = 0.5*text_columns+0.5*gray
+
+  segmented_image = np.zeros((h,w,3), np.uint8)
+  segmented_image[:,:,0] = text_only
+  segmented_image[:,:,1] = text_only
+  segmented_image[:,:,2] = text_only
+  return segmented_image
+
+def cleaned2segmented(cleaned, average_size):
   vertical_smoothing_threshold = 0.75*average_size
   horizontal_smoothing_threshold = 0.75*average_size
+  (h,w)=cleaned.shape[:2]
   if args and args.verbose:
     print 'Applying run length smoothing with vertical threshold ' + str(vertical_smoothing_threshold) \
     +' and horizontal threshold ' + str(horizontal_smoothing_threshold)
   run_length_smoothed = rls.RLSO( cv2.bitwise_not(cleaned), vertical_smoothing_threshold, horizontal_smoothing_threshold)
   components = cc.get_connected_components(run_length_smoothed)
   text = np.zeros((h,w),np.uint8)
-  text_columns = np.zeros((h,w),np.uint8)
-  text_rows = np.zeros((h,w),np.uint8)
+  #text_columns = np.zeros((h,w),np.uint8)
+  #text_rows = np.zeros((h,w),np.uint8)
   for component in components:
     seg_thresh = 2
     if args and args.segment_threshold:
@@ -112,23 +134,14 @@ def segment_image(img, max_scale=4.0, min_scale=0.15):
     if len(v_lines)<2 and len(h_lines)<2:continue
     
     ocr.draw_2d_slices(text,[component],color=255,line_size=-1)
-    ocr.draw_2d_slices(text_columns,v_lines,color=255,line_size=-1)
-    ocr.draw_2d_slices(text_rows,h_lines,color=255,line_size=-1)
-  
-  if args and args.debug:
-    text = 0.5*text + 0.5*gray
-    text_rows = 0.5*text_rows+0.5*gray
-    text_colums = 0.5*text_columns+0.5*gray
-
-  segmented_image = np.zeros((h,w,3), np.uint8)
-  segmented_image[:,:,0] = text_columns
-  segmented_image[:,:,1] = text_rows
-  segmented_image[:,:,2] = text
-  return segmented_image
+    #ocr.draw_2d_slices(text_columns,v_lines,color=255,line_size=-1)
+    #ocr.draw_2d_slices(text_rows,h_lines,color=255,line_size=-1)
+  return text
 
 def segment_image_file(filename):
   img = cv2.imread(filename)
-  return segment_image(img)
+  gray = grayscale(img)
+  return segment_image(gray)
 
 def grayscale(img):
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)

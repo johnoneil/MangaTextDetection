@@ -18,6 +18,7 @@ import run_length_smoothing as rls
 import clean_page as clean
 import ocr
 import segmentation as seg
+import furigana
 
 import numpy as np
 import cv2
@@ -38,8 +39,9 @@ if __name__ == '__main__':
   parser.add_argument('-o','--output', dest='outfile', help='Output html file.')
   #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
   #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
-  parser.add_argument('--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
   parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
+  parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
   
   args = parser.parse_args()
   infile = args.infile
@@ -49,13 +51,28 @@ if __name__ == '__main__':
 
   img = cv2.imread(sys.argv[1])
   gray = clean.grayscale(img)
-  inv_binary = cv2.bitwise_not(clean.binarize(gray))
 
-  segmented_image = seg.segment_image(img)
+  inv_binary = cv2.bitwise_not(clean.binarize(gray))
+  binary = clean.binarize(gray)
+
+  segmented_image = seg.segment_image(gray)
+  segmented_image = segmented_image[:,:,2]
+  segmentation_mask = np.array(segmented_image!=0,'B')
+  cleaned = cv2.bitwise_not(binary*segmentation_mask)
+
+  if args.furigana:
+    furigana_areas = furigana.estimate_furigana(gray,segmented_image)
+    furigana_mask = np.array(furigana_areas==0,'B')
+    cleaned = cv2.bitwise_not(cv2.bitwise_not(cleaned)*furigana_mask)
+    #cv2.imshow('furigana_areas',furigana_areas)
+    #cv2.waitKey(0)
+
+  cv2.imshow('Cleaned',cleaned)
+  cv2.waitKey(0)
 
   #text columns are in the 3rd channel
-  columns = segmented_image[:,:,2]
-  components = cc.get_connected_components(columns)
+  #columns = segmented_image[:,:,2]
+  components = cc.get_connected_components(segmented_image)
 
   #perhaps do more strict filtering of connected components because sections of characters
   #will not be dropped from run length smoothed areas? Yes. Results quite good.
@@ -66,7 +83,7 @@ if __name__ == '__main__':
   from django.conf import settings
   from django.template.loader import render_to_string
   settings.configure()
-  blurbs = ocr.ocr_on_bounding_boxes(inv_binary, components)
+  blurbs = ocr.ocr_on_bounding_boxes(cleaned, components)
 
   proc_stop_time = datetime.datetime.now()
   processing_time = proc_stop_time - proc_start_time
