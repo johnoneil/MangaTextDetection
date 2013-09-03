@@ -52,8 +52,9 @@ if __name__ == '__main__':
   img = cv2.imread(sys.argv[1])
   gray = clean.grayscale(img)
 
-  inv_binary = cv2.bitwise_not(clean.binarize(gray))
-  binary = clean.binarize(gray)
+  binary_threshold=170
+  inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
+  binary = clean.binarize(gray, threshold=binary_threshold)
 
   segmented_image = seg.segment_image(gray)
   segmented_image = segmented_image[:,:,2]
@@ -64,11 +65,6 @@ if __name__ == '__main__':
     furigana_areas = furigana.estimate_furigana(gray,segmented_image)
     furigana_mask = np.array(furigana_areas==0,'B')
     cleaned = cv2.bitwise_not(cv2.bitwise_not(cleaned)*furigana_mask)
-    #cv2.imshow('furigana_areas',furigana_areas)
-    #cv2.waitKey(0)
-
-  cv2.imshow('Cleaned',cleaned)
-  cv2.waitKey(0)
 
   #text columns are in the 3rd channel
   #columns = segmented_image[:,:,2]
@@ -87,8 +83,6 @@ if __name__ == '__main__':
 
   proc_stop_time = datetime.datetime.now()
   processing_time = proc_stop_time - proc_start_time
-  #print 'proc time ' + str(processing_time.total_seconds())
-
 
   template = u'''
   <html>

@@ -159,8 +159,7 @@ def ocr_on_bounding_boxes(img, components):
     tesseract.SetCvImage(roi, api)
     txt=api.GetUTF8Text()
     conf=api.MeanTextConf()
-    #if conf>0:
-    if True:
+    if conf>0 and len(txt)>0:
       blurb = Blurb(x, y, w, h, txt, confidence=conf)
       blurbs.append(blurb)
     
