@@ -148,6 +148,7 @@ def ocr_on_bounding_boxes(img, components):
     api.SetVariable('language_model_ngram_on','0')
     api.SetVariable('textord_force_make_prop_words','F')
     api.SetVariable('tessedit_char_blacklist', '}><L')
+    api.SetVariable('textord_debug_tabfind','0')
 
     x=component[1].start
     y=component[0].start

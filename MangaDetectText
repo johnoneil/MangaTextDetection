@@ -37,11 +37,13 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Generate HTML annotation for raw manga scan with detected OCR\'d text.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to annoate.')
   parser.add_argument('-o','--output', dest='outfile', help='Output html file.')
-  #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
-  #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
   parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
   parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
+  #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
+  #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
+  #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
   
   args = parser.parse_args()
   infile = args.infile
@@ -52,16 +54,20 @@ if __name__ == '__main__':
   img = cv2.imread(sys.argv[1])
   gray = clean.grayscale(img)
 
-  binary_threshold=170
+  binary_threshold=args.binary_threshold
+  if args.verbose:
+    print 'Binarizing with threshold value of ' + str(binary_threshold)
   inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
   binary = clean.binarize(gray, threshold=binary_threshold)
 
-  segmented_image = seg.segment_image(gray)
+  segmented_image = seg.segment_image(gray,binary_threshold=binary_threshold, suppress_furigana=args.furigana)
   segmented_image = segmented_image[:,:,2]
   segmentation_mask = np.array(segmented_image!=0,'B')
   cleaned = cv2.bitwise_not(binary*segmentation_mask)
 
   if args.furigana:
+    if args.verbose:
+      print 'Attempting to suppress furigana'
     furigana_areas = furigana.estimate_furigana(gray,segmented_image)
     furigana_mask = np.array(furigana_areas==0,'B')
     cleaned = cv2.bitwise_not(cv2.bitwise_not(cleaned)*furigana_mask)

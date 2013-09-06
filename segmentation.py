@@ -36,19 +36,19 @@ parser.add_argument('-v','--verbose', help='Verbose operation. Print status mess
 parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
 parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
 parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
 parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
 parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
 args = None
 
 
-def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False):
+def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False,binary_threshold=190):
   (h,w)=img.shape[:2]
 
   if(args and args.verbose):
     print 'Segmenting ' + str(h) + 'x' + str(w) + ' image.'
 
   #create gaussian filtered and unfiltered binary images
-  binary_threshold = 180
   if args and args.verbose:
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = binarize(img,threshold=binary_threshold)
@@ -60,13 +60,13 @@ def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False):
   The necessary sigma needed for Gaussian filtering (to remove screentones and other noise) seems
   to be a function of the resolution the manga was scanned at (or original page size, I'm not sure).
   Assuming 'normal' page size for a phonebook style Manga is 17.5cmx11.5cm (6.8x4.5in).
-  A scan of 300dpi will result in an image about 2000x1350, which requires a sigma of 1.5 to 1.8.
+  A scan of 300dpi will result in an image about 1900x1350, which requires a sigma of 1.5 to 1.8.
   I'm encountering many smaller images that may be nonstandard scanning dpi values or just smaller
   magazines. Haven't found hard info on this yet. They require sigma values of about 0.5 to 0.7.
   I'll therefore (for now) just calculate required (nonspecified) sigma as a linear function of vertical
   image resolution.
   '''
-  sigma = (1.0/676.0)*float(h)-1.3
+  sigma = (0.8/676.0)*float(h)-0.9
   if args and args.sigma:
     sigma = args.sigma
   if args and args.verbose:
@@ -138,10 +138,10 @@ def cleaned2segmented(cleaned, average_size):
     #ocr.draw_2d_slices(text_rows,h_lines,color=255,line_size=-1)
   return text
 
-def segment_image_file(filename):
+def segment_image_file(filename,binary_threshold,suppress_furigana):
   img = cv2.imread(filename)
   gray = grayscale(img)
-  return segment_image(gray)
+  return segment_image(gray,binary_threshold=binary_threshold,suppress_furigana=suppress_furigana)
 
 def grayscale(img):
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     print '\tProcessing file ' + infile
     print '\tGenerating output ' + outfile
 
-  segmented = segment_image_file(infile)
+  segmented = segment_image_file(infile,binary_threshold=args.binary_threshold,suppress_furigana=args.furigana)
 
   imsave(outfile,segmented)
   #cv2.imwrite(outfile,segmented)

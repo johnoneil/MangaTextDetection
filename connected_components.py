@@ -97,7 +97,7 @@ def average_size(img):
 def form_mask(img, max_size, min_size):
   components = get_connected_components(img)
   sorted_components = sorted(components,key=area_bb)
-  mask = bounding_boxes(img,sorted_components,max_size,min_size)
-  #mask = cc_masks(img,sorted_components,max_size,min_size)
+  #mask = bounding_boxes(img,sorted_components,max_size,min_size)
+  mask = masks(img,sorted_components,max_size,min_size)
   return mask
 

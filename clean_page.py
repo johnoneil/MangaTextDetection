@@ -70,6 +70,8 @@ def clean_image_file(filename):
 
 def grayscale(img):
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+  #adjust histogram to maximize black/white range (increase contrast, decrease brightness)
+  gray = cv2.cv2.equalizeHist(gray)
   return gray
 
 def binarize(img, threshold=190, white=255):
@@ -80,6 +82,8 @@ def form_canny_mask(img, mask=None):
   edges = cv2.Canny(img, 128, 255, apertureSize=3)
   if mask is not None:
     mask = mask*edges
+  else:
+    mask = edges
   contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
   temp_mask = np.zeros(img.shape,np.uint8)

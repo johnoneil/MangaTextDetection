@@ -84,7 +84,7 @@ def estimate_furigana(img, segmentation):
   text_areas = segmentation
 
   #form binary image from grayscale
-  binary_threshold = 180
+  binary_threshold = 190
   if args and args.verbose:
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = clean.binarize(img,threshold=binary_threshold)
