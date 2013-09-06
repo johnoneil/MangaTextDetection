@@ -26,35 +26,23 @@ import os
 
 import connected_components as cc
 import furigana
+import arg
+import clean_page as clean
 
-parser = argparse.ArgumentParser(description='Segment raw Manga scan image.')
-parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
-parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
-#parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
-#parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
-parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
-parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
-parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
-parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
-parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
-parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
-args = None
-
-
-def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False,binary_threshold=190):
+def segment_image(img, max_scale=4.0, min_scale=0.15):
   (h,w)=img.shape[:2]
 
-  if(args and args.verbose):
+  if arg.boolean_value('verbose'):
     print 'Segmenting ' + str(h) + 'x' + str(w) + ' image.'
 
   #create gaussian filtered and unfiltered binary images
-  if args and args.verbose:
+  binary_threshold = arg.integer_value('binary_threshold',default_value=190)
+  if arg.boolean_value('verbose'):
     print 'binarizing images with threshold value of ' + str(binary_threshold)
-  binary = binarize(img,threshold=binary_threshold)
+  binary = clean.binarize(img,threshold=binary_threshold)
 
   binary_average_size = cc.average_size(binary)
-  if args and args.verbose:
+  if arg.boolean_value('verbose'):
     print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
   '''
   The necessary sigma needed for Gaussian filtering (to remove screentones and other noise) seems
@@ -67,17 +55,16 @@ def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False,bi
   image resolution.
   '''
   sigma = (0.8/676.0)*float(h)-0.9
-  if args and args.sigma:
-    sigma = args.sigma
-  if args and args.verbose:
+  sigma = arg.float_value('sigma',default_value=sigma)
+  if arg.boolean_value('verbose'):
     print 'Applying Gaussian filter with sigma (std dev) of ' + str(sigma)
   gaussian_filtered = scipy.ndimage.gaussian_filter(img, sigma=sigma)
   
-  gaussian_binary = binarize(gaussian_filtered,threshold=binary_threshold)
+  gaussian_binary = clean.binarize(gaussian_filtered,threshold=binary_threshold)
   
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)
-  if args and args.verbose:
+  if arg.boolean_value('verbose'):
     print 'Binarized Gaussian filtered image average cc size: ' + str(average_size)
   max_size = average_size*max_scale
   min_size = average_size*min_scale
@@ -86,7 +73,7 @@ def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False,bi
   mask = cc.form_mask(gaussian_binary, max_size, min_size)
 
   #secondary mask is formed from canny edges
-  canny_mask = form_canny_mask(gaussian_filtered, mask=mask)
+  canny_mask = clean.form_canny_mask(gaussian_filtered, mask=mask)
 
   #final mask is size filtered connected components on canny mask
   final_mask = cc.form_mask(canny_mask, max_size, min_size)
@@ -96,14 +83,17 @@ def segment_image(img, max_scale=4.0, min_scale=0.15, suppress_furigana=False,bi
   text_only = cleaned2segmented(cleaned, average_size)
 
   #if desired, suppress furigana characters (which interfere with OCR)
+  suppress_furigana = arg.boolean_value('furigana')
   if suppress_furigana:
+    if arg.boolean_value('verbose'):
+      print 'Attempting to suppress furigana characters which interfere with OCR.'
     furigana_mask = furigana.estimate_furigana(cleaned, text_only)
     furigana_mask = np.array(furigana_mask==0,'B')
     cleaned = cv2.bitwise_not(cleaned)*furigana_mask
     cleaned = cv2.bitwise_not(cleaned)
     text_only = cleaned2segmented(cleaned, average_size)
   
-  if args and args.debug:
+  if arg.boolean_value('debug'):
     text_only = 0.5*text_only + 0.5*img
     #text_rows = 0.5*text_rows+0.5*gray
     #text_colums = 0.5*text_columns+0.5*gray
@@ -118,7 +108,7 @@ def cleaned2segmented(cleaned, average_size):
   vertical_smoothing_threshold = 0.75*average_size
   horizontal_smoothing_threshold = 0.75*average_size
   (h,w)=cleaned.shape[:2]
-  if args and args.verbose:
+  if arg.boolean_value('verbose'):
     print 'Applying run length smoothing with vertical threshold ' + str(vertical_smoothing_threshold) \
     +' and horizontal threshold ' + str(horizontal_smoothing_threshold)
   run_length_smoothed = rls.RLSO( cv2.bitwise_not(cleaned), vertical_smoothing_threshold, horizontal_smoothing_threshold)
@@ -127,9 +117,7 @@ def cleaned2segmented(cleaned, average_size):
   #text_columns = np.zeros((h,w),np.uint8)
   #text_rows = np.zeros((h,w),np.uint8)
   for component in components:
-    seg_thresh = 2
-    if args and args.segment_threshold:
-      seg_thresh = args.segment_threshold
+    seg_thresh = arg.integer_value('segment_threshold',default_value=1)
     (aspect, v_lines, h_lines) = ocr.segment_into_lines(cv2.bitwise_not(cleaned), component,min_segment_threshold=seg_thresh)
     if len(v_lines)<2 and len(h_lines)<2:continue
     
@@ -138,11 +126,12 @@ def cleaned2segmented(cleaned, average_size):
     #ocr.draw_2d_slices(text_rows,h_lines,color=255,line_size=-1)
   return text
 
-def segment_image_file(filename,binary_threshold,suppress_furigana):
+def segment_image_file(filename):
   img = cv2.imread(filename)
-  gray = grayscale(img)
-  return segment_image(gray,binary_threshold=binary_threshold,suppress_furigana=suppress_furigana)
+  gray = clean.grayscale(img)
+  return segment_image(gray)
 
+'''
 def grayscale(img):
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
   return gray
@@ -167,15 +156,30 @@ def form_canny_mask(img, mask=None):
     #polygon = cv2.approxPolyDP(c,0.1*cv2.arcLength(c,True),True)
     #cv2.drawContours(temp_mask,[polygon],0,255,-1)
   return temp_mask
-
+'''
 
 if __name__ == '__main__':
-
-  args = parser.parse_args()
-  infile = args.infile
+  
+  parser = arg.parser
+  parser = argparse.ArgumentParser(description='Segment raw Manga scan image.')
+  parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
+  parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
+  #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
+  #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
+  parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
+  parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
+  parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
+  parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
+  parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
+  
+  arg.value = parser.parse_args()
+  
+  infile = arg.string_value('infile')
   outfile = infile + '.segmented.png'
-  if args.outfile is not None:
-    outfile = args.outfile
+  if arg.is_defined('outfile'):
+    outfile = arg.string_value('outfile')
   binary_outfile = infile + '.binary.png'
   #if args.binary is not None:
   #  binary_outfile = args.binary
@@ -185,18 +189,18 @@ if __name__ == '__main__':
     print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
 
-  if args.verbose:
+  if arg.boolean_value('verbose'):
     print '\tProcessing file ' + infile
     print '\tGenerating output ' + outfile
 
-  segmented = segment_image_file(infile,binary_threshold=args.binary_threshold,suppress_furigana=args.furigana)
+  segmented = segment_image_file(infile)
 
   imsave(outfile,segmented)
   #cv2.imwrite(outfile,segmented)
   #if binary is not None:
   #  cv2.imwrite(binary_outfile, binary)
   
-  if args.display:
+  if arg.boolean_value('display'):
     cv2.imshow('Segmented', segmented)
     #cv2.imshow('Cleaned',cleaned)
     #if args.mask is not None:

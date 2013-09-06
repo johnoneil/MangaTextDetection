@@ -27,19 +27,7 @@ import os
 
 import connected_components as cc
 import clean_page as clean
-
-parser = argparse.ArgumentParser(description='Estimate areas of furigana in segmented raw manga scan.')
-parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
-parser.add_argument('segmentation_file', help='Input 3 channel segmentation of input image, with text areas in R channel.')
-parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
-#parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
-#parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
-parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
-parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
-parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
-#parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-#parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
-args = None
+import arg
 
 def binary_mask(mask):
   return np.array(mask!=0,'B')
@@ -76,7 +64,7 @@ def find_cc_to_left(component, components, max_dist=20):
 def estimate_furigana(img, segmentation):
   (w,h)=img.shape[:2]
 
-  if(args and args.verbose):
+  if arg.boolean_value('verbose'):
     print 'Estimateding furigana in ' + str(h) + 'x' + str(w) + ' image.'
 
   #gray = clean.grayscale(img)
@@ -84,21 +72,21 @@ def estimate_furigana(img, segmentation):
   text_areas = segmentation
 
   #form binary image from grayscale
-  binary_threshold = 190
-  if args and args.verbose:
+  binary_threshold = arg.integer_value('binary_threshold',default_value=190)
+  if arg.boolean_value('verbose'):
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = clean.binarize(img,threshold=binary_threshold)
   #binary = binary[:,:,2]
 
   binary_average_size = cc.average_size(binary)
-  if args and args.verbose:
+  if arg.boolean_value('verbose'):
     print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
 
   #apply mask and return images
   text_mask = binary_mask(text_areas)
   cleaned = cv2.bitwise_not(text_mask*binary)
   cleaned_average_size = cc.average_size(cleaned)
-  if args and args.verbose:
+  if arg.boolean_value('verbose'):
     print 'average cc size for cleaned, binaryized grayscale image is ' + str(cleaned_average_size)
 
   columns = scipy.ndimage.filters.gaussian_filter(cleaned,(1.5*binary_average_size,0.0))
@@ -132,7 +120,7 @@ def estimate_furigana(img, segmentation):
 
   furigana = furigana * furigana_mask
 
-  if args and args.debug:
+  if arg.boolean_value('debug'):
     furigana = 0.25*(columns*text_mask) + 0.25*img + 0.5*furigana
     #cc.draw_bounding_boxes(furigana, boxes, color=255,line_size=1)
 
@@ -147,19 +135,29 @@ def estimate_furigana_from_files(filename, segmentation_filename):
 
 
 if __name__ == '__main__':
+  parser = arg.parser
+  parser = argparse.ArgumentParser(description='Estimate areas of furigana in segmented raw manga scan.')
+  parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
+  parser.add_argument('segmentation_file', help='Input 3 channel segmentation of input image, with text areas in R channel.')
+  parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
+  #parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
+  #parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
+  parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
+  parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
+  #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+  #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
+  arg.value = parser.parse_args()
 
-  args = parser.parse_args()
-  infile = args.infile
-  segmentation_file = args.segmentation_file
-  outfile = infile + '.furigana.png'
-  if args.outfile is not None:
-    outfile = args.outfile
+  infile = arg.string_value('infile')
+  segmentation_file = arg.string_value('segmentation_file')
+  outfile = arg.string_value('outfile',default_value=infile + '.furigana.png')
 
   if not os.path.isfile(infile) or not os.path.isfile(segmentation_file):
     print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
 
-  if args.verbose:
+  if arg.boolean_value('verbose'):
     print '\tProcessing file ' + infile
     print '\tWith segmentation file ' + segmentation_file
     print '\tAnd generating output ' + outfile
@@ -168,7 +166,7 @@ if __name__ == '__main__':
 
   imsave(outfile,furigana)
   
-  if args.display:
+  if arg.boolean_value('display'):
     cv2.imshow('Furigana', furigana)
     if cv2.waitKey(0) == 27:
       cv2.destroyAllWindows()

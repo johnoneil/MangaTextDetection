@@ -19,6 +19,7 @@ import clean_page as clean
 import ocr
 import segmentation as seg
 import furigana
+import arg
 
 import numpy as np
 import cv2
@@ -27,13 +28,13 @@ import argparse
 import os
 import scipy.ndimage
 import datetime
-#from pylab import zeros,amax,median
 
 
 if __name__ == '__main__':
 
   proc_start_time = datetime.datetime.now()
 
+  parser = arg.parser
   parser = argparse.ArgumentParser(description='Generate HTML annotation for raw manga scan with detected OCR\'d text.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to annoate.')
   parser.add_argument('-o','--output', dest='outfile', help='Output html file.')
@@ -44,29 +45,30 @@ if __name__ == '__main__':
   #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
   parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
   #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
-  
-  args = parser.parse_args()
-  infile = args.infile
-  outfile = infile + '.html'
-  if args.outfile is not None:
-    outfile = args.outfile
+  arg.value = parser.parse_args()
 
-  img = cv2.imread(sys.argv[1])
+  infile = arg.string_value('infile')
+  outfile = arg.string_value('outfile',default_value=infile + '.html')
+
+  if not os.path.isfile(infile):
+    print 'Please provide a regular existing input file. Use -h option for help.'
+    sys.exit(-1)
+  img = cv2.imread(infile)
   gray = clean.grayscale(img)
 
-  binary_threshold=args.binary_threshold
-  if args.verbose:
+  binary_threshold=arg.integer_value('binary_threshold',default_value=190)
+  if arg.boolean_value('verbose'):
     print 'Binarizing with threshold value of ' + str(binary_threshold)
   inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
   binary = clean.binarize(gray, threshold=binary_threshold)
 
-  segmented_image = seg.segment_image(gray,binary_threshold=binary_threshold, suppress_furigana=args.furigana)
+  segmented_image = seg.segment_image(gray)
   segmented_image = segmented_image[:,:,2]
   segmentation_mask = np.array(segmented_image!=0,'B')
   cleaned = cv2.bitwise_not(binary*segmentation_mask)
 
-  if args.furigana:
-    if args.verbose:
+  if arg.boolean_value('furigana'):
+    if arg.boolean_value('verbose'):
       print 'Attempting to suppress furigana'
     furigana_areas = furigana.estimate_furigana(gray,segmented_image)
     furigana_mask = np.array(furigana_areas==0,'B')
@@ -163,7 +165,7 @@ if __name__ == '__main__':
   open(outfile, "w").write(t.render(c).encode("utf-8"))
   
   
-  if args.display:
+  if arg.boolean_value('display'):
     cv2.imshow('img',img)
     #cv2.imwrite('segmented.png',img)
     cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)

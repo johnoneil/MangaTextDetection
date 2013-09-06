@@ -32,6 +32,7 @@ import argparse
 import os
 
 import connected_components as cc
+import arg
 
 
 def clean_page(img, max_scale=4.0, min_scale=0.15):
@@ -70,8 +71,8 @@ def clean_image_file(filename):
 
 def grayscale(img):
   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-  #adjust histogram to maximize black/white range (increase contrast, decrease brightness)
-  gray = cv2.cv2.equalizeHist(gray)
+  #adjust histogram to maximize black/white range (increase contrast, decrease brightness)??
+  #gray = cv2.equalizeHist(gray)
   return gray
 
 def binarize(img, threshold=190, white=255):
@@ -100,29 +101,26 @@ def form_canny_mask(img, mask=None):
 
 if __name__ == '__main__':
 
+  parser = arg.parser
   parser = argparse.ArgumentParser(description='Clean raw Manga scan image.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
   parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
   parser.add_argument('-m','--mask', dest='mask', default=None, help='Output (binary) mask for non-graphical regions.')
   parser.add_argument('-b','--binary', dest='binary', default=None, help='Binarized version of input file.')
-  parser.add_argument('--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
   parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
-  
-  args = parser.parse_args()
-  infile = args.infile
-  outfile = infile + '.cleaned.png'
-  if args.outfile is not None:
-    outfile = args.outfile
-  binary_outfile = infile + '.binary.png'
-  if args.binary is not None:
-    binary_outfile = args.binary
-  mask = args.mask
+  arg.value = parser.parse_args()
+
+  infile = arg.string_value('infile')
+  outfile = arg.string_value('outfile',default_value=infile + '.cleaned.png')
+  binary_outfile = arg.string_value('binary',default_value=infile + '.binary.png')
+  mask = arg.boolean_value('mask')
 
   if not os.path.isfile(infile):
     print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
 
-  if args.verbose:
+  if arg.boolean_value('verbose'):
     print '\tProcessing file ' + infile
     print '\tGenerating output ' + outfile
 
@@ -132,10 +130,10 @@ if __name__ == '__main__':
   if binary is not None:
     cv2.imwrite(binary_outfile, binary)
   
-  if args.display:
+  if arg.boolean_value('display'):
     cv2.imshow('Binary',binary)
     cv2.imshow('Cleaned',cleaned)
-    if args.mask is not None:
+    if arg.boolean_value('mask'):
       cv2.imshow('Mask',mask)
   if cv2.waitKey(0) == 27:
     cv2.destroyAllWindows()
