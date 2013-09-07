@@ -14,10 +14,16 @@ DATE: Saturday, August 10th 2013
 #import clean_page as clean
 import connected_components as cc
 import run_length_smoothing as rls
+import segmentation
+import clean_page as clean
+import arg
+import defaults
+import argparse
 
 import numpy as np
 import cv2
 import sys
+import os
 import scipy.ndimage
 from pylab import zeros,amax,median
 
@@ -182,71 +188,48 @@ def ocr_on_bounding_boxes(img, components):
     '''
   return blurbs
 
+def main():
+  parser = arg.parser
+  parser = argparse.ArgumentParser(description='Basic OCR on raw manga scan.')
+  parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
+  parser.add_argument('-o','--output', dest='outfile', help='Output (color) cleaned raw manga scan image.')
+  parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
+  parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=defaults.BINARY_THRESHOLD)
+  parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
+  parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
+  
+  arg.value = parser.parse_args()
+  
+  infile = arg.string_value('infile')
+  outfile = arg.string_value('outfile', default_value=infile + '.html')
 
-if __name__ == '__main__':
-
-  #this experiment relies upon a single input argument
-  if len(sys.argv)<2:
-    print 'USAGE ocr_on_bounding_boxes.py <input image name>'
+  if not os.path.isfile(infile):
+    print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
 
-  img = cv2.imread(sys.argv[1])
-  (h,w,d)=img.shape
+  if arg.boolean_value('verbose'):
+    print '\tProcessing file ' + infile
+    print '\tGenerating output ' + outfile
 
-  #convert to single channel grayscale, and form scaled and unscaled binary images
-  #we scale the binary image to have a copy with tones (zip-a-tones) removed
-  #and we form a binary image that's unscaled for use in final masking
-  gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-  #scaled = cv2.pyrUp(cv2.pyrDown(gray,dstsize=(w/2, h/2)),dstsize=(w, h))
-  #(binthresh,binary) = cv2.threshold(scaled, 190, 255, cv2.THRESH_BINARY_INV )
-  (binthresh_gray,binary) = cv2.threshold(gray, 190, 255, cv2.THRESH_BINARY_INV )
-  
-  #Draw out statistics on average connected component size in the rescaled, binary image
-  components = cc.get_connected_components(binary)
-  sorted_components = sorted(components,key=cc.area_bb)
-  #sorted_components = sorted(components,key=lambda x:area_nz(x,binary))
-  areas = zeros(binary.shape)
-  for component in sorted_components:
-    if amax(areas[component])>0: continue
-    areas[component] = cc.area_bb(component)**0.5
-    #areas[component]=area_nz(component,binary)
-  average_size = median(areas[(areas>3)&(areas<100)])
-  #average_size = median(areas[areas>3])
-  #print 'Average area of component is: ' + str(average_size)
+  img = cv2.imread(infile)
+  gray = clean.grayscale(img)
+  binary = clean.binarize(gray)
 
-  #use multiple of average size as vertical threshold for run length smoothing
-  vertical_smoothing_threshold = 0.75*average_size
-  horizontal_smoothing_threshold = 0.75*average_size
+  segmented = segmentation.segment_image_file(infile)
 
-  run_length_smoothed_or = rls.RLSO(binary, horizontal_smoothing_threshold, vertical_smoothing_threshold)
-
-  components = cc.get_connected_components(run_length_smoothed_or)
+  components = cc.get_connected_components(segmented)
 
   #perhaps do more strict filtering of connected components because sections of characters
   #will not be dripped from run length smoothed areas? Yes. Results quite good.
-  filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
+  #filtered = cc.filter_by_size(img,components,average_size*100,average_size*1)
 
-  #Attempt to segment CCs into vertical and horizontal lines
-  #(horizontal_lines, vertical_lines, unk_lines) = segment_into_lines(binary,img,filtered,average_size)
-  #draw_bounding_boxes(img,horizontal_lines,color=(0,0,255),line_size=2)
-  #draw_2d_slices(img, horizontal_lines, color=(0,0,255))
-  #draw_bounding_boxes(img,vertical_lines,color=(0,255,0),line_size=2)
-  #draw_2d_slices(img,vertical_lines,color=(0,255,0))
-  #draw_bounding_boxes(img,unk_lines,color=(255,0,0),line_size=2)
-  #draw_2d_slices(img,unk_lines,color=(255,0,0))
-  blurbs = ocr_on_bounding_boxes(binary, filtered)
+  blurbs = ocr_on_bounding_boxes(binary, components)
   for blurb in blurbs:
-    print str(blurb.confidence)+'% :'+ blurb.text
+    print str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text
   
 
-  #draw_bounding_boxes(img,filtered)
-  cv2.imshow('img',img)
-  cv2.imwrite('segmented.png',img)
+if __name__ == '__main__':
+  main()
 
-  cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)
-  cv2.imwrite('run_length_smoothed.png',run_length_smoothed_or)
-  #cv2.imwrite('cleaned.png',cleaned)
-
-  if cv2.waitKey(0) == 27:
-    cv2.destroyAllWindows()
-  cv2.destroyAllWindows()
