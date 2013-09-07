@@ -20,6 +20,7 @@ import ocr
 import segmentation as seg
 import furigana
 import arg
+import defaults
 
 import numpy as np
 import cv2
@@ -43,7 +44,7 @@ if __name__ == '__main__':
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
   #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
   #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=defaults.BINARY_THRESHOLD)
   #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
   arg.value = parser.parse_args()
 
@@ -56,7 +57,7 @@ if __name__ == '__main__':
   img = cv2.imread(infile)
   gray = clean.grayscale(img)
 
-  binary_threshold=arg.integer_value('binary_threshold',default_value=190)
+  binary_threshold=arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
     print 'Binarizing with threshold value of ' + str(binary_threshold)
   inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))

@@ -33,18 +33,23 @@ import os
 
 import connected_components as cc
 import arg
+import defaults
 
 
-def clean_page(img, max_scale=4.0, min_scale=0.15):
+def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE_MIN):
   #img = cv2.imread(sys.argv[1])
   (h,w,d)=img.shape
 
   gray = grayscale(img)
 
   #create gaussian filtered and unfiltered binary images
-  gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=1.5)
-  gaussian_binary = binarize(gaussian_filtered)
-  binary = binarize(gray)
+  sigma = arg.float_value('sigma',default_value=defaults.GAUSSIAN_FILTER_SIGMA)
+  if arg.boolean_value('verbose'):
+    print 'Binarizing image with sigma value of ' + str(sigma)
+  gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=sigma)
+  binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
+  gaussian_binary = binarize(gaussian_filtered, threshold=binary_threshold)
+  binary = binarize(gray, threshold=binary_threshold)
   
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)

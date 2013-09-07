@@ -28,15 +28,16 @@ import connected_components as cc
 import furigana
 import arg
 import clean_page as clean
+import defaults
 
-def segment_image(img, max_scale=4.0, min_scale=0.15):
+def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE_MIN):
   (h,w)=img.shape[:2]
 
   if arg.boolean_value('verbose'):
     print 'Segmenting ' + str(h) + 'x' + str(w) + ' image.'
 
   #create gaussian filtered and unfiltered binary images
-  binary_threshold = arg.integer_value('binary_threshold',default_value=190)
+  binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = clean.binarize(img,threshold=binary_threshold)
@@ -105,8 +106,8 @@ def segment_image(img, max_scale=4.0, min_scale=0.15):
   return segmented_image
 
 def cleaned2segmented(cleaned, average_size):
-  vertical_smoothing_threshold = 0.75*average_size
-  horizontal_smoothing_threshold = 0.75*average_size
+  vertical_smoothing_threshold = defaults.VERTICAL_SMOOTHING_MULTIPLIER*average_size
+  horizontal_smoothing_threshold = defaults.HORIZONTAL_SMOOTHING_MULTIPLIER*average_size
   (h,w)=cleaned.shape[:2]
   if arg.boolean_value('verbose'):
     print 'Applying run length smoothing with vertical threshold ' + str(vertical_smoothing_threshold) \
@@ -158,8 +159,7 @@ def form_canny_mask(img, mask=None):
   return temp_mask
 '''
 
-if __name__ == '__main__':
-  
+def main(): 
   parser = arg.parser
   parser = argparse.ArgumentParser(description='Segment raw Manga scan image.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
@@ -170,20 +170,15 @@ if __name__ == '__main__':
   parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
   parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
   parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=190)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=defaults.BINARY_THRESHOLD)
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
-  parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
+  parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
   
   arg.value = parser.parse_args()
   
   infile = arg.string_value('infile')
-  outfile = infile + '.segmented.png'
-  if arg.is_defined('outfile'):
-    outfile = arg.string_value('outfile')
+  outfile = arg.string_value('outfile', default_value=infile + '.segmented.png')
   binary_outfile = infile + '.binary.png'
-  #if args.binary is not None:
-  #  binary_outfile = args.binary
-  #mask = args.mask
 
   if not os.path.isfile(infile):
     print 'Please provide a regular existing input file. Use -h option for help.'
@@ -209,3 +204,5 @@ if __name__ == '__main__':
       cv2.destroyAllWindows()
     cv2.destroyAllWindows()
 
+if __name__ == '__main__':
+  main()

@@ -28,6 +28,7 @@ import os
 import connected_components as cc
 import clean_page as clean
 import arg
+import defaults
 
 def binary_mask(mask):
   return np.array(mask!=0,'B')
@@ -72,7 +73,7 @@ def estimate_furigana(img, segmentation):
   text_areas = segmentation
 
   #form binary image from grayscale
-  binary_threshold = arg.integer_value('binary_threshold',default_value=190)
+  binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = clean.binarize(img,threshold=binary_threshold)
@@ -89,8 +90,8 @@ def estimate_furigana(img, segmentation):
   if arg.boolean_value('verbose'):
     print 'average cc size for cleaned, binaryized grayscale image is ' + str(cleaned_average_size)
 
-  columns = scipy.ndimage.filters.gaussian_filter(cleaned,(1.5*binary_average_size,0.0))
-  columns = clean.binarize(columns,threshold=240)
+  columns = scipy.ndimage.filters.gaussian_filter(cleaned,(defaults.FURIGANA_VERTICAL_SIGMA_MULTIPLIER*binary_average_size,defaults.FURIGANA_HORIZONTAL_SIGMA_MULTIPLIER*binary_average_size))
+  columns = clean.binarize(columns,threshold=defaults.FURIGANA_BINARY_THRESHOLD)
   furigana = columns*text_mask
 
   #go through the columns in each text area, and:
@@ -102,14 +103,14 @@ def estimate_furigana(img, segmentation):
   lines_general = []
   for box in boxes:
     line_width = cc_width(box)
-    line_to_left = find_cc_to_left(box, boxes, max_dist=line_width*2.0)
+    line_to_left = find_cc_to_left(box, boxes, max_dist=line_width*defaults.FURIGANA_DISTANCE_MULTIPLIER)
     if line_to_left is None:
       non_furigana_lines.append(box)
       continue
 
     left_line_width = cc_width(line_to_left)
     #print 'found cc with width ' + str(line_width) + ' to the right of cc with width ' + str(left_line_width)
-    if line_width < left_line_width * 0.65:
+    if line_width < left_line_width * defaults.FURIGANA_WIDTH_THRESHOLD:
       furigana_lines.append(box)
     else:
       non_furigana_lines.append(box)
@@ -134,7 +135,7 @@ def estimate_furigana_from_files(filename, segmentation_filename):
   return estimate_furigana(gray, segmentation)
 
 
-if __name__ == '__main__':
+def main():
   parser = arg.parser
   parser = argparse.ArgumentParser(description='Estimate areas of furigana in segmented raw manga scan.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
@@ -171,4 +172,7 @@ if __name__ == '__main__':
     if cv2.waitKey(0) == 27:
       cv2.destroyAllWindows()
     cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+  main()
 
