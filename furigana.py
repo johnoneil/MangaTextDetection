@@ -68,8 +68,6 @@ def estimate_furigana(img, segmentation):
   if arg.boolean_value('verbose'):
     print 'Estimateding furigana in ' + str(h) + 'x' + str(w) + ' image.'
 
-  #gray = clean.grayscale(img)
-  #text_areas = segmentation[:,:,2]
   text_areas = segmentation
 
   #form binary image from grayscale
@@ -77,7 +75,6 @@ def estimate_furigana(img, segmentation):
   if arg.boolean_value('verbose'):
     print 'binarizing images with threshold value of ' + str(binary_threshold)
   binary = clean.binarize(img,threshold=binary_threshold)
-  #binary = binary[:,:,2]
 
   binary_average_size = cc.average_size(binary)
   if arg.boolean_value('verbose'):
@@ -109,7 +106,6 @@ def estimate_furigana(img, segmentation):
       continue
 
     left_line_width = cc_width(line_to_left)
-    #print 'found cc with width ' + str(line_width) + ' to the right of cc with width ' + str(left_line_width)
     if line_width < left_line_width * defaults.FURIGANA_WIDTH_THRESHOLD:
       furigana_lines.append(box)
     else:
@@ -117,13 +113,13 @@ def estimate_furigana(img, segmentation):
 
   furigana_mask = np.zeros(furigana.shape)
   for f in furigana_lines:
-    furigana_mask[f]=1
+    furigana_mask[f[0].start:f[0].stop,f[1].start:f[1].stop]=255
+    #furigana_mask[f]=1
 
-  furigana = furigana * furigana_mask
+  furigana = furigana_mask #furigana * furigana_mask
 
   if arg.boolean_value('debug'):
     furigana = 0.25*(columns*text_mask) + 0.25*img + 0.5*furigana
-    #cc.draw_bounding_boxes(furigana, boxes, color=255,line_size=1)
 
   return furigana
 

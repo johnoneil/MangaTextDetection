@@ -15,6 +15,7 @@ DATE: Saturday, August 10th 2013
 import numpy as np
 import scipy.ndimage
 from pylab import zeros,amax,median
+import cv2
 
 def area_bb(a):
   return np.prod([max(x.stop-x.start,0) for x in a[:2]])
@@ -52,10 +53,10 @@ def masks(image,connected_components,max_size,min_size):
     #print str(mask[component])
   return mask
 
-def draw_bounding_boxes(img,connected_components,max_size,min_size,color=(0,0,255),line_size=2):
+def draw_bounding_boxes(img,connected_components,max_size=0,min_size=0,color=(0,0,255),line_size=2):
   for component in connected_components:
-    if area_bb(component)**0.5<min_size: continue
-    if area_bb(component)**0.5>max_size: continue
+    if min_size > 0 and area_bb(component)**0.5<min_size: continue
+    if max_size > 0 and area_bb(component)**0.5>max_size: continue
     #a = area_nz(component,img)
     #if a<min_size: continue
     #if a>max_size: continue

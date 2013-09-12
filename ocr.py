@@ -64,7 +64,7 @@ def estimate_furigana(lines):
       non_furigana.append(line)
   return (furigana, non_furigana)
 
-def segment_into_lines(img,component, min_segment_threshold=2):
+def segment_into_lines(img,component, min_segment_threshold=1):
   (ys,xs)=component[:2]
   w=xs.stop-xs.start
   h=ys.stop-ys.start
@@ -76,33 +76,24 @@ def segment_into_lines(img,component, min_segment_threshold=2):
   start_col = xs.start
   for col in range(xs.start,xs.stop):
     count = np.count_nonzero(img[ys.start:ys.stop,col])
-    #print str(count)
-    if count<=min_segment_threshold or col==(xs.stop-1):
-      #cv2.line(color_image, (col,ys.start), (col,ys.stop),(255,255,0),1)
+    if count<=min_segment_threshold or col==(xs.stop):
       if start_col>=0:
-        width = col-start_col
-        #print 'width ' + str(width)
-        #vertical.append(img[ys.start:ys.stop,start_col:col])
         vertical.append((slice(ys.start,ys.stop),slice(start_col,col)))
         start_col=-1
-    else:
-      if start_col<0:
-        start_col=col
+    elif start_col < 0:
+      start_col=col
 
   #detect horizontal rows of non-zero pixels
   horizontal=[]
   start_row = ys.start
   for row in range(ys.start,ys.stop):
     count = np.count_nonzero(img[row,xs.start:xs.stop])
-    if count<=min_segment_threshold or row==(ys.stop-1):
+    if count<=min_segment_threshold or row==(ys.stop):
       if start_row>=0:
-        height = row-start_row
-        #print 'height ' + str(height)
         horizontal.append((slice(start_row,row),slice(xs.start,xs.stop)))
         start_row=-1
-    else:
-      if start_row<0:
-        start_row=row
+    elif start_row < 0:
+      start_row=row
 
   #we've now broken up the original bounding box into possible vertical
   #and horizontal lines.
@@ -196,7 +187,7 @@ def main():
   parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
   #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
   parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=defaults.BINARY_THRESHOLD)
+  parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=int,default=defaults.BINARY_THRESHOLD)
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
   parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
   
