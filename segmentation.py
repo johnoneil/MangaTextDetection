@@ -101,9 +101,6 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
     cleaned = cv2.bitwise_not(cleaned)
     text_only = cleaned2segmented(cleaned, average_size)
   
-
-
-  #text_only = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
   (text_like_areas, nontext_like_areas) = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
   if arg.boolean_value('verbose'):
     print '**********there are ' + str(len(text_like_areas)) + ' text like areas total.'
@@ -178,6 +175,8 @@ def filter_text_like_areas(img, segmentation, average_size):
 
 
 def text_like_histogram(img, area, average_size):
+  if not arg.boolean_value('additional_filtering'):
+    return True
   (x, y, w, h) = dimensions_2d_slice(area)
   x_subimage = np.copy(img)
   x_histogram = np.zeros(w,int)
@@ -185,23 +184,42 @@ def text_like_histogram(img, area, average_size):
   y_histogram = np.zeros(h,int)
 
   aoi = img[area]
-  #average_size = cc.average_size(aoi)
+
+  ccs = cc.get_connected_components(aoi)
+  if( len(ccs) < 2):
+    return False
+
   #avg = average_size
   avg = cc.average_size(aoi)
+  mean_width = cc.mean_width(aoi)
+  mean_height = cc.mean_height(aoi)
   if arg.boolean_value('verbose'):
-    print 'average size = ' + str(avg)
-  if math.isnan(avg):#average_size):
+    print 'average size = ' + str(avg) + ' mean width = ' + str(mean_width) + ' mean height = ' + str(mean_height)
+  if math.isnan(avg) or avg==0:
     if arg.boolean_value('verbose'):
       print 'Rejecting area since average size is NaN'
-    return False
+    #return False
 
   #in a text area, the average size of a blob (cc) will reflect
   #that of the used characters/typeface. Thus if there simply aren't
   #enough pixels per character, we can drop this as a text candidate
-  #if average_size < defaults.MINIMUM_TEXT_SIZE_THRESHOLD:
-  if avg < defaults.MINIMUM_TEXT_SIZE_THRESHOLD:
+  #note the following is failing in odd situations, probably due to incorrect
+  #calculation of 'avg size'
+  #TODO: replace testing against "average size" with testing against
+  #hard thresholds for connected component width and height. i.e.
+  #if they're all thin small ccs, we can drop this area
+
+  #if avg < defaults.MINIMUM_TEXT_SIZE_THRESHOLD:
+  if mean_width < defaults.MINIMUM_TEXT_SIZE_THRESHOLD or \
+    mean_height < defaults.MINIMUM_TEXT_SIZE_THRESHOLD:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since average size is less than threshold.'
+      print 'Rejecting area since average width or height is less than threshold.'
+    return False
+
+  #check the basic aspect ratio of the ccs
+  if mean_width/mean_height < 0.5 or mean_width/mean_height > 2:
+    if arg.boolean_value('verbose'):
+      print 'Rejecting area since mean cc aspect ratio not textlike.'
     return False
 
   width_multiplier = float(avg)
@@ -220,8 +238,7 @@ def text_like_histogram(img, area, average_size):
   for i,row in enumerate(range(y,y+h)):
     black_pixel_count = np.count_nonzero(x_subimage[row,x:x+w])
     y_histogram[i] = black_pixel_count
-
-
+  
   h_white_runs = get_white_runs(x_histogram)
   num_h_white_runs = len(h_white_runs)
   h_black_runs = get_black_runs(x_histogram)
@@ -244,13 +261,23 @@ def text_like_histogram(img, area, average_size):
     print 'black runs mean ' + str(h_character_mean) + ' ' + str(v_character_mean)
     print 'black runs std  ' + str(h_character_variance) + ' ' + str(v_character_variance)
 
-  if num_h_white_runs == 0 and num_v_white_runs == 0:
+  if num_h_white_runs < 2 and num_v_white_runs < 2:
+    if arg.boolean_value('verbose'):
+      print 'Rejecting area since not sufficient amount post filtering whitespace.'
     return False
-  if v_spacing_variance > 5.0 :#or (len(v_white_runs)>0 and v_spacing_variance == 0):
-    return False
-  #if h_spacing_variance == 0 and len(h_black_runs)>2:
-  #  return False
 
+  if v_spacing_variance > defaults.MAXIMUM_VERTICAL_SPACE_VARIANCE:
+    if arg.boolean_value('verbose'):
+      print 'Rejecting area since vertical inter-character space variance too high.'
+    return False
+
+  if v_character_mean < avg*0.5 or v_character_mean > avg*2.0:
+    pass    
+    #return False
+  if h_character_mean < avg*0.5 or h_character_mean > avg*2.0:
+    pass    
+    #return False
+  
   return True
 
 def get_black_runs(histogram):
@@ -265,9 +292,12 @@ def get_white_runs(histogram):
 def slicing_list_stats(slicings):
   widths = []
   for slicing in slicings:
-    widths.append(slicing[0].stop-slicing[0].start+1)
-  mean = np.mean(widths)
-  variance = np.std(widths)
+    widths.append(slicing[0].stop-slicing[0].start)
+  mean = 0
+  variance = 0
+  if len(widths)>0:
+    mean = np.mean(widths)
+    variance = np.std(widths)
   return (mean, variance)
     
 
@@ -395,6 +425,7 @@ def main():
   parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=float,default=defaults.BINARY_THRESHOLD)
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
   parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
+  parser.add_argument('--additional_filtering', help='Attempt to filter false text positives by histogram processing.', action="store_true")
   
   arg.value = parser.parse_args()
   

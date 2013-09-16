@@ -43,9 +43,10 @@ if __name__ == '__main__':
   parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
   #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
-  #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
+  parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
   parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=int,default=defaults.BINARY_THRESHOLD)
   #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
+  parser.add_argument('--additional_filtering', help='Attempt to filter false text positives by histogram processing.', action="store_true")
   arg.value = parser.parse_args()
 
   infile = arg.string_value('infile')
