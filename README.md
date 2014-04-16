@@ -6,7 +6,7 @@ Experiments in text localization and detection in raw manga scans. Mostly using 
 
 Overview
 --------
-This repository holds some experiments I did in summer 2013 during a sudden interest in text detection in images. It uses some standard techniques (run length smoothing, connected component analysis) and some experimental stuff. Overal, I was able to get in the neighborhood of where I wanted to be, but the results are very processing intensive and not terribly reliable.
+This repository holds some experiments I did in summer 2013 during a sudden interest in text detection in images. It uses some standard techniques (run length smoothing, connected component analysis) and some experimental stuff. Overall, I was able to get in the neighborhood of where I wanted to be, but the results are very processing intensive and not terribly reliable.
 
 State
 -----
@@ -47,7 +47,7 @@ The results follow:
 
 OCR and Html Generation
 -----------------------
-I did take the time to run simple OCR on some of the locatied text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertial text, amongst other issues.
+I did take the time to run simple OCR on some of the locatied text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertical text, among other issues.
 The script ocr.py should run ocr on detected text regions, and output the results to the command line.
 ```
 ../ocr.py '週刊ヤングマガジン31号194.jpg'
