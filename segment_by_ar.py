@@ -87,6 +87,16 @@ def generate_mask(image, filter):
     if not filter(two_d_slice):
       continue
     mask[two_d_slice] |= labels[two_d_slice]==(label+1)
+    #also add nonzero pixels from all connected components ENTIRELY CONTAINED
+    #by this cc's bounding box. This is an attempt to partially recover smaller
+    #character components which might not be connected with the primary character
+    #(i.e. marks and accent like forms)
+    for l in range(num_labels):
+      if l == label: continue
+      other_slice = components[l]
+      if contains(two_d_slice, other_slice):
+        mask[other_slice] |= labels[other_slice]==(l+1)
+
   return mask
 
 def binarize(image, threshold=180):
@@ -97,11 +107,14 @@ def binarize(image, threshold=180):
   binary[high_values] = 255
   return binary
 
+
 def contains(cc_a, cc_b):
-  return cc_b[0][0]>=cc_a[0][0] and cc_b[0][1]<=cc_a[0][1] and \
-    cc_b[1][0]>=cc_a[1][0] and cc_b[1][1]<=cc_a[1][1]
-
-
+  w = width_bb(cc_a)
+  dw = w/5
+  h = height_bb(cc_a)
+  dh = h/5
+  return cc_b[0].start>=(cc_a[0].start-dh) and cc_b[0].stop<=(cc_a[0].stop+dh) and \
+    cc_b[1].start>=(cc_a[1].start-dw) and cc_b[1].stop<=(cc_a[1].stop+dw)
 
 def main():
 
@@ -137,7 +150,7 @@ def main():
   binary[high_values] = 255
 
   area_mask = generate_mask(np.invert(binary), AreaFilter(min=10.0, max=100.0))
-  ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.8, max=1.2))
+  ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.75, max=1.25))
   clean_mask = np.invert(ar_mask)
   cleaned = np.invert(np.invert(image) * np.invert(clean_mask))
 
