@@ -97,6 +97,10 @@ def binarize(image, threshold=180):
   binary[high_values] = 255
   return binary
 
+def contains(cc_a, cc_b):
+  return cc_b[0][0]>=cc_a[0][0] and cc_b[0][1]<=cc_a[0][1] and \
+    cc_b[1][0]>=cc_a[1][0] and cc_b[1][1]<=cc_a[1][1]
+
 
 
 def main():
