@@ -6,10 +6,6 @@ Desc:
 Author: John O'Neil
 Email: oneil.john@gmail.com
 DATE: Sunday, June 22nd 2014
-
-  Attempt to segment character candidates via
-  selecting them by ar (Japanese characters for the most
-    part have an aspect ratio of about 1.0)
   
 """
 
@@ -38,11 +34,11 @@ def height_bb(a):
 def area_nz(slice, image):
   return np.count_nonzero(image[slice])
 
-def get_connected_components(image):
+def generate_connected_components(image):
   s = scipy.ndimage.morphology.generate_binary_structure(2,2)
-  labels,n = scipy.ndimage.measurements.label(image)#,structure=s)
-  objects = scipy.ndimage.measurements.find_objects(labels)
-  return objects  
+  labels, num_labels = scipy.ndimage.measurements.label(image)#,structure=s)
+  slices = scipy.ndimage.measurements.find_objects(labels)
+  return (labels, num_labels, slices) 
 
 '''
 def draw_bounding_boxes(img,connected_components,max_size=0,min_size=0,color=(0,0,255),line_size=2):
@@ -84,13 +80,13 @@ class AspectRatioFilter(object):
     return self.filter(cc)
 
 def generate_mask(image, filter):
-  components = get_connected_components(image)
-  sorted_components = sorted(components,key=area_bb)
+  (labels, num_labels, components) = generate_connected_components(image)
   mask = zeros(image.shape,np.uint8)#,'B')
-  for component in sorted_components:
-    if not filter(component):
+  for label in range(num_labels):
+    two_d_slice = components[label]
+    if not filter(two_d_slice):
       continue
-    mask[component] = image[component]>0
+    mask[two_d_slice] = labels[two_d_slice]==(label+1)
   return mask
 
 def binarize(image, threshold=180):
@@ -108,15 +104,6 @@ def main():
   #proc_start_time = datetime.datetime.now()
   parser = argparse.ArgumentParser(description='Generate Statistics on connected components from manga scan.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to annoate.')
-  #parser.add_argument('-o','--output', dest='outfile', help='Output statistic file.')
-  #parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
-  #parser.add_argument('--display', help='Display output using OPENCV api and block program exit.', action="store_true")
-  #parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
-  #parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
-  #parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
-  #parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=int,default=defaults.BINARY_THRESHOLD)
-  #parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=1)
-  #parser.add_argument('--additional_filtering', help='Attempt to filter false text positives by histogram processing.', action="store_true")
   args = parser.parse_args()
 
   infile = args.infile
@@ -125,22 +112,31 @@ def main():
     print 'Please provide a regular existing input file. Use -h option for help.'
     sys.exit(-1)
 
-  #Load the image and make id suitable for analysis (filter and binarize)
   image = Image.open(infile).convert("L")
-  gaussian_filtered = scipy.ndimage.gaussian_filter(image, sigma=1.5)
-  binary = binarize(gaussian_filtered)
+  '''
+  The necessary sigma needed for Gaussian filtering (to remove screentones and other noise) seems
+  to be a function of the resolution the manga was scanned at (or original page size, I'm not sure).
+  Assuming 'normal' page size for a phonebook style Manga is 17.5cmx11.5cm (6.8x4.5in).
+  A scan of 300dpi will result in an image about 1900x1350, which requires a sigma of 1.5 to 1.8.
+  I'm encountering many smaller images that may be nonstandard scanning dpi values or just smaller
+  magazines. Haven't found hard info on this yet. They require sigma values of about 0.5 to 0.7.
+  I'll therefore (for now) just calculate required (nonspecified) sigma as a linear function of vertical
+  image resolution.
+  '''
+  (w,h) = image.size
+  sigma = (0.8/676.0)*float(h)-0.9
+  gaussian_filtered = scipy.ndimage.gaussian_filter(image, sigma=sigma)
+  low_values = gaussian_filtered <= 180
+  high_values = gaussian_filtered > 180
+  binary = gaussian_filtered
+  binary[low_values] = 0
+  binary[high_values] = 255
 
-  #form masks via the area of connected components and their aspect ratio
-  #this gives us a fairly good estimate of some subset of text candidates (>90% are text)
   area_mask = generate_mask(np.invert(binary), AreaFilter(min=10.0, max=100.0))
   ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.8, max=1.2))
   clean_mask = np.invert(ar_mask)
-
-  #apply the size/ar filter to the original image, cleaning it
   cleaned = np.invert(np.invert(image) * np.invert(clean_mask))
 
-
-  #show the steps we've followed.
   plt.subplot(141)
   plt.imshow(image, cmap=cm.Greys_r)
   plt.subplot(142)
@@ -151,6 +147,7 @@ def main():
   plt.imshow(cleaned, cmap=cm.Greys_r)
 
   plt.show()
+
 
 if __name__ == '__main__':
   main()
