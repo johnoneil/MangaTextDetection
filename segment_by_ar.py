@@ -86,7 +86,7 @@ def generate_mask(image, filter):
     two_d_slice = components[label]
     if not filter(two_d_slice):
       continue
-    mask[two_d_slice] = labels[two_d_slice]==(label+1)
+    mask[two_d_slice] |= labels[two_d_slice]==(label+1)
   return mask
 
 def binarize(image, threshold=180):
