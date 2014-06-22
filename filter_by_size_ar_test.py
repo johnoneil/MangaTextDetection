@@ -41,7 +41,13 @@ def get_connected_components(image):
   s = scipy.ndimage.morphology.generate_binary_structure(2,2)
   labels,n = scipy.ndimage.measurements.label(image)#,structure=s)
   objects = scipy.ndimage.measurements.find_objects(labels)
-  return objects  
+  return objects
+
+def generate_connected_components(image):
+  s = scipy.ndimage.morphology.generate_binary_structure(2,2)
+  labels, num_labels = scipy.ndimage.measurements.label(image)#,structure=s)
+  slices = scipy.ndimage.measurements.find_objects(labels)
+  return (labels, num_labels, slices) 
 
 def bounding_boxes(image,connected_components,max_size,min_size):
   mask = np.zeros(image.shape,'B')#np.uint8)#'B')
@@ -175,14 +181,13 @@ class AspectRatioFilter(object):
     return self.filter(cc)
 
 def generate_mask(image, filter):
-  components = get_connected_components(image)
-  sorted_components = sorted(components,key=area_bb)
-  #mask = bounding_boxes(img,sorted_components,max_size,min_size)
+  (labels, num_labels, components) = generate_connected_components(image)
   mask = zeros(image.shape,np.uint8)#,'B')
-  for component in sorted_components:
-    if not filter(component):
+  for label in range(num_labels):
+    two_d_slice = components[label]
+    if not filter(two_d_slice):
       continue
-    mask[component] = image[component]>0
+    mask[two_d_slice] = labels[two_d_slice]==(label+1)
   return mask
 
 def binarize(image, threshold=180):
