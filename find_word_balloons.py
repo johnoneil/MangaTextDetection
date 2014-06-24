@@ -119,28 +119,6 @@ def contains(cc_a, cc_b):
   return cc_b[0].start>=(cc_a[0].start-dh) and cc_b[0].stop<=(cc_a[0].stop+dh) and \
     cc_b[1].start>=(cc_a[1].start-dw) and cc_b[1].stop<=(cc_a[1].stop+dw)
 
-class BaloonCandidate(object):
-  def __init__(self, index, bounding_box):
-    self._index = index
-    self._bounding_box = bounding_box
-    self._characters = []
-  @property  
-  def index(self):
-    return self._index
-  @property
-  def bounding_box(self):
-    return self._bounding_box
-  def add_character(self, character):
-    self._characters.append(character)
-  @property
-  def characters(self):
-    return self._characters
-  #def __eq__(self, other):
-  #  return self._index == other._index
-  @property
-  def label(self):
-    return self._index + 1
-
 class ConnectedComponent(object):
   def __init__(self, index, bounding_box):
     self._index = index
@@ -149,8 +127,30 @@ class ConnectedComponent(object):
   def label(self):
     return self._index + 1
 
-def get_cc_area(cc):
-  return area_bb(cc._bounding_box)
+  @property  
+  def index(self):
+    return self._index
+
+  @property
+  def bounding_box(self):
+    return self._bounding_box
+
+  @staticmethod
+  def area(cc):
+    return area_bb(cc.bounding_box)
+
+
+class BaloonCandidate(ConnectedComponent):
+  def __init__(self, index, bounding_box):
+    ConnectedComponent.__init__(self, index, bounding_box)
+    self._characters = []
+
+  def add_character(self, character):
+    self._characters.append(character)
+
+  @property
+  def characters(self):
+    return self._characters
 
 def find_balloons(cleaned_binary, white_areas):
   balloons = []
@@ -159,7 +159,7 @@ def find_balloons(cleaned_binary, white_areas):
   ccs = []
   for l in range(num_labels):
     ccs.append(ConnectedComponent(l, components[l]))
-  sorted_white_areas = sorted(ccs, key=get_cc_area)
+  sorted_white_areas = sorted(ccs, key=ConnectedComponent.area)
   (text_labels, text_num_labels, text_components) = generate_connected_components(np.invert(cleaned_binary))
   #sorted_white_areas = sorted(components, key=area_bb)
 
@@ -189,13 +189,13 @@ def find_balloons(cleaned_binary, white_areas):
   mask = zeros(white_areas.shape,np.uint8)
   for b in balloons:
     #print str(len(b.characters))
-    if len(b.characters) > 1:
+    #if len(b.characters) > 1:
     #if True:
       two_d_slice = b.bounding_box
       #print b.index
       #print labels[two_d_slice]
       mask[two_d_slice] |= labels[two_d_slice]==(b.label)
-  return mask
+  return (balloons, mask)
 
 
 def main():
@@ -247,7 +247,7 @@ def main():
   white_areas = generate_mask(binary, AreaFilter(min=60.0, max=None), include_contained=False)
 
   #3 isolate white areas which have a significant number of character candidates witin them
-  candidate_balloons = find_balloons(cleaned_binary, white_areas)
+  candidate_balloons, candidate_ballons_mask = find_balloons(cleaned_binary, white_areas)
 
   plt.subplot(141)
   plt.imshow(image, cmap=cm.Greys_r)
@@ -256,7 +256,7 @@ def main():
   plt.subplot(143)
   plt.imshow(white_areas, cmap=cm.Greys_r)
   plt.subplot(144)
-  plt.imshow(candidate_balloons, cmap=cm.Greys_r)
+  plt.imshow(candidate_ballons_mask, cmap=cm.Greys_r)
 
   plt.show()
 
