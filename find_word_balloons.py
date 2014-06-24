@@ -59,6 +59,9 @@ class AreaFilter(object):
   def filter(self, component):
     if self._min and area_bb(component)**.5<self._min: return False
     if self._max and area_bb(component)**.5>self._max: return False
+    #print str(area_bb(component))
+    #if self._min and area_bb(component)<self._min: return False
+    #if self._max and area_bb(component)>self._max: return False
     return True
 
   def __call__(self, cc):
@@ -116,42 +119,82 @@ def contains(cc_a, cc_b):
   return cc_b[0].start>=(cc_a[0].start-dh) and cc_b[0].stop<=(cc_a[0].stop+dh) and \
     cc_b[1].start>=(cc_a[1].start-dw) and cc_b[1].stop<=(cc_a[1].stop+dw)
 
+class BaloonCandidate(object):
+  def __init__(self, index, bounding_box):
+    self._index = index
+    self._bounding_box = bounding_box
+    self._characters = []
+  @property  
+  def index(self):
+    return self._index
+  @property
+  def bounding_box(self):
+    return self._bounding_box
+  def add_character(self, character):
+    self._characters.append(character)
+  @property
+  def characters(self):
+    return self._characters
+  #def __eq__(self, other):
+  #  return self._index == other._index
+  @property
+  def label(self):
+    return self._index + 1
+
+class ConnectedComponent(object):
+  def __init__(self, index, bounding_box):
+    self._index = index
+    self._bounding_box = bounding_box
+  @property
+  def label(self):
+    return self._index + 1
+
+def get_cc_area(cc):
+  return area_bb(cc._bounding_box)
+
 def find_balloons(cleaned_binary, white_areas):
   balloons = []
   #sort white areas from smallest to largest. We want smallest "hits"
   (labels, num_labels, components) = generate_connected_components(white_areas)
-  (text_labels, text_num_labels, text_components) = generate_connected_components(cleaned_binary)
-  sorted_white_areas = sorted(components, key=area_bb)
+  ccs = []
+  for l in range(num_labels):
+    ccs.append(ConnectedComponent(l, components[l]))
+  sorted_white_areas = sorted(ccs, key=get_cc_area)
+  (text_labels, text_num_labels, text_components) = generate_connected_components(np.invert(cleaned_binary))
+  #sorted_white_areas = sorted(components, key=area_bb)
+
   for t in text_components:
-    #print str(area_bb(i))
-    #any white areas that contain a text hit, add them to our ballon candidates
-    #print 'num labels ' + str(num_labels)
-    for label in reversed(range(num_labels)):
-      print label
-      if contains(components[label], t):
-        if not label in balloons:
-          balloons.append(label)
+    #for label in reversed(range(num_labels)):
+    #print "..."
+    for cc in sorted_white_areas:
+      
+      #for label, c in enumerate(sorted_white_areas):
+      #print 'text size ' + str(area_bb(t))
+      #print 'ballon size ' + str(area_bb(sorted_white_areas[label]))
+      #print str(sorted_white_areas[label])
+      if contains(cc._bounding_box, t):
+        #print 'new '+str(sorted_white_areas[label])
+        if not cc._index in [x.index for x in balloons]:
+          new_balloon = BaloonCandidate(index=cc._index, bounding_box=cc._bounding_box)
+          new_balloon.add_character(t)
+          #print 'add char ' + str(t)
+          balloons.append(new_balloon)
+        else:
+          old_balloon = [x for x in balloons if x.index==cc._index][0]
+          #print 'add char ' + str(t) + ' to ' + str(old_balloon.bounding_box)
+          old_balloon.add_character(t)
         break
 
   #form an image of just those white areas with text candidate hits
   mask = zeros(white_areas.shape,np.uint8)
   for b in balloons:
-    #print "b : "+str(b)+" component " + str(components[balloons[b]])
-    print str(b)
-    two_d_slice = components[b]
-    mask[two_d_slice] |= labels[two_d_slice]==(b+1)
-    #also add nonzero pixels from all connected components ENTIRELY CONTAINED
-    #by this cc's bounding box. This is an attempt to partially recover smaller
-    #character components which might not be connected with the primary character
-    #(i.e. marks and accent like forms)
-    '''
-    if True:
-      for l in range(num_labels):
-        if l == label: continue
-        other_slice = components[l]
-        if contains(two_d_slice, other_slice):
-          mask[other_slice] |= labels[other_slice]==(l+1)
-    '''
+    #print str(len(b.characters))
+    if len(b.characters) > 1:
+    #if True:
+      two_d_slice = b.bounding_box
+      #print b.index
+      #print labels[two_d_slice]
+      mask[two_d_slice] |= labels[two_d_slice]==(b.label)
   return mask
 
 
@@ -188,7 +231,7 @@ def main():
   binary[low_values] = 0
   binary[high_values] = 255
 
-  area_mask = generate_mask(np.invert(binary), AreaFilter(min=10.0, max=100.0))
+  area_mask = generate_mask(np.invert(binary), AreaFilter(min=10.0, max=60.0))
   ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.75, max=1.25))
   clean_mask = np.invert(ar_mask)
   cleaned = np.invert(np.invert(image) * np.invert(clean_mask))
@@ -201,7 +244,7 @@ def main():
   cleaned_binary = np.invert(np.invert(binary) * np.invert(clean_mask))
 
   #2 find all ares of white (or just large ones?)
-  white_areas = generate_mask(binary, AreaFilter(min=100.0, max=None), include_contained=False)
+  white_areas = generate_mask(binary, AreaFilter(min=60.0, max=None), include_contained=False)
 
   #3 isolate white areas which have a significant number of character candidates witin them
   candidate_balloons = find_balloons(cleaned_binary, white_areas)
