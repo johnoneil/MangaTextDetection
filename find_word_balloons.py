@@ -57,11 +57,11 @@ class AreaFilter(object):
     self._min = min
     self._max = max
   def filter(self, component):
-    if self._min and area_bb(component)**.5<self._min: return False
-    if self._max and area_bb(component)**.5>self._max: return False
+    #if self._min and area_bb(component)**.5<self._min: return False
+    #if self._max and area_bb(component)**.5>self._max: return False
     #print str(area_bb(component))
-    #if self._min and area_bb(component)<self._min: return False
-    #if self._max and area_bb(component)>self._max: return False
+    if self._min and area_bb(component)<self._min: return False
+    if self._max and area_bb(component)>self._max: return False
     return True
 
   def __call__(self, cc):
@@ -77,6 +77,25 @@ class AspectRatioFilter(object):
     if height == 0:
       return False
     aspect = float(width)/float(height)
+    return aspect >= self._min and aspect <= self._max
+
+  def __call__(self, cc):
+    return self.filter(cc)
+
+class HoleFilter(object):
+  def __init__(self, hole_candidate_ccs, min_holes=1,):
+    self._hole_candidate_ccs = hole_candidate_ccs
+    self._min_holes = min_holes
+
+  def filter(self, component):
+    hole_count=0
+    for h in self._hole_candidate_ccs:
+      if component.contains(h):
+        hole_count+=1
+        if hole_count >= self._min_holes:
+          return True
+    return False
+
     return aspect >= self._min and aspect <= self._max
 
   def __call__(self, cc):
@@ -111,18 +130,23 @@ def binarize(image, threshold=180):
   return binary
 
 
-def contains(cc_a, cc_b):
+def contains(cc_a, cc_b, ddw=5, ddh=5):
   w = width_bb(cc_a)
-  dw = w/5
+  dw = 0
+  if ddw>0:
+    dw=w/ddw
   h = height_bb(cc_a)
-  dh = h/5
+  dh = 0
+  if ddh>0:
+    dh=h/ddh
   return cc_b[0].start>=(cc_a[0].start-dh) and cc_b[0].stop<=(cc_a[0].stop+dh) and \
     cc_b[1].start>=(cc_a[1].start-dw) and cc_b[1].stop<=(cc_a[1].stop+dw)
 
 class ConnectedComponent(object):
-  def __init__(self, index, bounding_box):
+  def __init__(self, index, bounding_box, labels):
     self._index = index
     self._bounding_box = bounding_box
+    self._labels = labels
   @property
   def label(self):
     return self._index + 1
@@ -135,14 +159,26 @@ class ConnectedComponent(object):
   def bounding_box(self):
     return self._bounding_box
 
+  @property
+  def labels(self):
+    return self._labels
+
   @staticmethod
   def area(cc):
     return area_bb(cc.bounding_box)
 
+  def contains(self, cc_b):
+    w = width_bb(self.bounding_box)
+    dw = w/5
+    h = height_bb(self.bounding_box)
+    dh = h/5
+    return cc_b[0].start>=(self.bounding_box[0].start-dh) and cc_b[0].stop<=(self.bounding_box[0].stop+dh) and \
+      cc_b[1].start>=(self.bounding_box[1].start-dw) and cc_b[1].stop<=(self.bounding_box[1].stop+dw)
 
-class BaloonCandidate(ConnectedComponent):
-  def __init__(self, index, bounding_box):
-    ConnectedComponent.__init__(self, index, bounding_box)
+
+class BalloonCandidate(ConnectedComponent):
+  def __init__(self, index, bounding_box, labels):
+    ConnectedComponent.__init__(self, index, bounding_box, labels)
     self._characters = []
 
   def add_character(self, character):
@@ -158,7 +194,7 @@ def find_balloons(cleaned_binary, white_areas):
   (labels, num_labels, components) = generate_connected_components(white_areas)
   ccs = []
   for l in range(num_labels):
-    ccs.append(ConnectedComponent(l, components[l]))
+    ccs.append(ConnectedComponent(l, components[l], labels))
   sorted_white_areas = sorted(ccs, key=ConnectedComponent.area)
   (text_labels, text_num_labels, text_components) = generate_connected_components(np.invert(cleaned_binary))
   #sorted_white_areas = sorted(components, key=area_bb)
@@ -172,10 +208,10 @@ def find_balloons(cleaned_binary, white_areas):
       #print 'text size ' + str(area_bb(t))
       #print 'ballon size ' + str(area_bb(sorted_white_areas[label]))
       #print str(sorted_white_areas[label])
-      if contains(cc._bounding_box, t):
+      if cc.contains(t):
         #print 'new '+str(sorted_white_areas[label])
         if not cc._index in [x.index for x in balloons]:
-          new_balloon = BaloonCandidate(index=cc._index, bounding_box=cc._bounding_box)
+          new_balloon = BalloonCandidate(index=cc._index, bounding_box=cc._bounding_box, labels=labels)
           new_balloon.add_character(t)
           #print 'add char ' + str(t)
           balloons.append(new_balloon)
@@ -189,13 +225,52 @@ def find_balloons(cleaned_binary, white_areas):
   mask = zeros(white_areas.shape,np.uint8)
   for b in balloons:
     #print str(len(b.characters))
-    #if len(b.characters) > 1:
+    #if len(b.characters) > 10:
     #if True:
       two_d_slice = b.bounding_box
       #print b.index
       #print labels[two_d_slice]
-      mask[two_d_slice] |= labels[two_d_slice]==(b.label)
+      #mask[two_d_slice] |= labels[two_d_slice]==(b.label)
+      #TODO: Use stored labels in CC class
+      mask[two_d_slice] |= b.labels[two_d_slice]==(b.label)
   return (balloons, mask)
+
+def holes_mask(candidate_balloons, binary):
+  #(labels, num_labels, holes) = generate_connected_components(binary)
+  mask = zeros(binary.shape, np.uint8)
+  for b in candidate_balloons:
+    two_d_slice = b.bounding_box
+    print str(b.labels[two_d_slice])
+    mask[two_d_slice] |= b.labels[two_d_slice]==(b.label)
+  return (candidate_balloons, mask)
+
+def generate_holes_mask(candidate_balloons, binary):
+  (labels, num_labels, holes) = generate_connected_components(binary)
+  final_balloons = []
+  for b in candidate_balloons:
+    #print 'cb char: ' + str(len(candidate_balloons.characters))
+    for t in b.characters:
+      for h in range(num_labels):
+        #if contains(t, h):
+        #if contains(b.bounding_box, holes[h], ddw=0, ddh=0):
+        if contains(t, holes[h], ddw=0, ddh=0):
+          final_balloons.append(b)
+          #final_balloons.append(ConnectedComponent(index=h, labels=labels, bounding_box=holes[h]))
+  #form an image of just those white areas with text candidate hits
+  mask = zeros(binary.shape,np.uint8)
+  for b in final_balloons:
+    #print str(len(b.characters))
+    #if len(b.characters) > 10:
+    #if True:
+      two_d_slice = b.bounding_box
+      #print b.index
+      #print labels[two_d_slice]
+      mask[two_d_slice] |= b.labels[two_d_slice]==(b.label)
+      #mask[two_d_slice] |= b.labels[two_d_slice] #==(b.label)
+      #mask[two_d_slice] |= b.labels[two_d_slice]!=(b.label)
+      #mask[two_d_slice] |= b.labels[two_d_slice]==False
+  return (final_balloons, mask)
+
 
 
 def main():
@@ -231,8 +306,13 @@ def main():
   binary[low_values] = 0
   binary[high_values] = 255
 
-  area_mask = generate_mask(np.invert(binary), AreaFilter(min=10.0, max=60.0))
-  ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.75, max=1.25))
+  min_text_area = (float(h)/140.0)**2.0
+  max_text_area = (float(h)/30.0)**2.0
+  print "min " + str(min_text_area)
+  print "max " + str(max_text_area)
+
+  area_mask = generate_mask(np.invert(binary), AreaFilter(min=min_text_area, max=max_text_area))
+  ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.75, max=1.15))
   clean_mask = np.invert(ar_mask)
   cleaned = np.invert(np.invert(image) * np.invert(clean_mask))
 
@@ -244,19 +324,36 @@ def main():
   cleaned_binary = np.invert(np.invert(binary) * np.invert(clean_mask))
 
   #2 find all ares of white (or just large ones?)
-  white_areas = generate_mask(binary, AreaFilter(min=60.0, max=None), include_contained=False)
+  white_areas = generate_mask(binary, AreaFilter(min=max_text_area, max=None), include_contained=False)
 
   #3 isolate white areas which have a significant number of character candidates witin them
   candidate_balloons, candidate_ballons_mask = find_balloons(cleaned_binary, white_areas)
 
-  plt.subplot(141)
+  #4 Keep all balloon candidates whose contained possible characters posess "holes". A much
+  #larger number of kanji candidates (and some kana) have holes. Few(er) noise strokes do.
+  #balloons_with_holes, balloons_with_holes_mask = find_balloons_with_holes(candidate_balloons, image, binary)
+  #balloons_with_holes_mask = generate_mask(candidate_ballons_mask, HolesFilter())
+  
+  (final_balloons, balloons_with_holes_mask) = generate_holes_mask(candidate_balloons, binary)
+  #(final_balloons, balloons_with_holes_mask) = holes_mask(candidate_balloons, binary)
+
+  #4 for each balloon candidate, attempt to find character candidates
+  #characters, character_mask = find_characters_in_balloon_candidates(candidate_balloons)
+
+    
+
+  plt.subplot(241)
   plt.imshow(image, cmap=cm.Greys_r)
-  plt.subplot(142)
+  plt.subplot(242)
+  plt.imshow(binary, cmap=cm.Greys_r)
+  plt.subplot(243)
   plt.imshow(cleaned_binary, cmap=cm.Greys_r)
-  plt.subplot(143)
+  plt.subplot(244)
   plt.imshow(white_areas, cmap=cm.Greys_r)
-  plt.subplot(144)
+  plt.subplot(245)
   plt.imshow(candidate_ballons_mask, cmap=cm.Greys_r)
+  plt.subplot(246)
+  plt.imshow(balloons_with_holes_mask, cmap=cm.Greys_r)
 
   plt.show()
 
