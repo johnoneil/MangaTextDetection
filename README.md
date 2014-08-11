@@ -31,7 +31,7 @@ With the results as follows (estimated text marked with red boxes):
 
 ![locate text output](https://github.com/johnoneil/MangaTextDetection/blob/master/test/194_text_locations_thumb.png?raw=true)
 
-Note that in the output above you see several of the implementation defficiencies. For exmple, there are several small false positives scattered around, and some major false positives on the girl's sleeve and eyes in panels 2 and 3.
+Note that in the output above you see several of the implementation deficiencies. For example, there are several small false positives scattered around, and some major false positives on the girl's sleeve and eyes in panels 2 and 3.
 Also note that many large areas of text were not detected (false negatives). Despite how pleased I was with the results (and I was more pleased than you could possibly believe) significant improvements are needed.
 
 Text Segmentation Example
@@ -47,7 +47,7 @@ The results follow:
 
 OCR and Html Generation
 -----------------------
-I did take the time to run simple OCR on some of the locatied text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertical text, among other issues.
+I did take the time to run simple OCR on some of the located text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertical text, among other issues.
 The script ocr.py should run ocr on detected text regions, and output the results to the command line.
 ```
 ../ocr.py '週刊ヤングマガジン31号194.jpg'
