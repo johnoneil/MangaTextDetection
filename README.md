@@ -80,4 +80,69 @@ I also embedded those results in an HTML output, allowing "readers" to hover on 
 
 ![locate text output](https://github.com/johnoneil/MangaTextDetection/blob/master/test/example.png?raw=true)
 
+Dependencies
+-----------------------
+You should be able to install most of the dependencies via pip, or you could use your operating systems package manager (e.g. Mac OS X http://brew.sh/)
 
+### Python 2.7+
+
+https://www.python.org/
+
+Install as per OS instructions.
+
+### Pip
+
+http://pip.readthedocs.org/en/latest/index.html
+
+Install as per OS instructions.
+
+### Numpy
+
+http://www.numpy.org/
+
+```
+pip install numpy
+```
+
+### Scipy
+
+http://www.scipy.org/index.html
+
+```
+pip install scipy
+```
+
+### Matplotlib (contains PyLab)
+
+http://matplotlib.org/
+
+```
+pip install matplotlib
+```
+
+### Pillow
+
+http://pillow.readthedocs.org/en/latest/
+
+```
+pip install Pillow
+```
+
+### OpenCV
+
+http://opencv.org/
+
+```
+Install as per OS instructions, this should also include the python bindings.
+```
+
+### Tesseract
+
+https://code.google.com/p/tesseract-ocr/
+
+Install as per OS instructions, then use pip to install the python bindings.
+Don't forget to include your target language's trained data sets.
+
+```
+pip install python-tesseract
+```
