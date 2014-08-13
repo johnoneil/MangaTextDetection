@@ -31,7 +31,7 @@ With the results as follows (estimated text marked with red boxes):
 
 ![locate text output](https://github.com/johnoneil/MangaTextDetection/blob/master/test/194_text_locations_thumb.png?raw=true)
 
-Note that in the output above you see several of the implementation defficiencies. For exmple, there are several small false positives scattered around, and some major false positives on the girl's sleeve and eyes in panels 2 and 3.
+Note that in the output above you see several of the implementation deficiencies. For example, there are several small false positives scattered around, and some major false positives on the girl's sleeve and eyes in panels 2 and 3.
 Also note that many large areas of text were not detected (false negatives). Despite how pleased I was with the results (and I was more pleased than you could possibly believe) significant improvements are needed.
 
 Text Segmentation Example
@@ -47,7 +47,7 @@ The results follow:
 
 OCR and Html Generation
 -----------------------
-I did take the time to run simple OCR on some of the locatied text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertical text, among other issues.
+I did take the time to run simple OCR on some of the located text regions, with mixed results. I used the python tesseract package (pytesser) but found the results were not generally good for vertical text, among other issues.
 The script ocr.py should run ocr on detected text regions, and output the results to the command line.
 ```
 ../ocr.py '週刊ヤングマガジン31号194.jpg'
@@ -80,4 +80,69 @@ I also embedded those results in an HTML output, allowing "readers" to hover on 
 
 ![locate text output](https://github.com/johnoneil/MangaTextDetection/blob/master/test/example.png?raw=true)
 
+Dependencies
+-----------------------
+You should be able to install most of the dependencies via pip, or you could use your operating systems package manager (e.g. Mac OS X http://brew.sh/)
 
+### Python 2.7+
+
+https://www.python.org/
+
+Install as per OS instructions.
+
+### Pip
+
+http://pip.readthedocs.org/en/latest/index.html
+
+Install as per OS instructions.
+
+### Numpy
+
+http://www.numpy.org/
+
+```
+pip install numpy
+```
+
+### Scipy
+
+http://www.scipy.org/index.html
+
+```
+pip install scipy
+```
+
+### Matplotlib (contains PyLab)
+
+http://matplotlib.org/
+
+```
+pip install matplotlib
+```
+
+### Pillow
+
+http://pillow.readthedocs.org/en/latest/
+
+```
+pip install Pillow
+```
+
+### OpenCV
+
+http://opencv.org/
+
+```
+Install as per OS instructions, this should also include the python bindings.
+```
+
+### Tesseract
+
+https://code.google.com/p/tesseract-ocr/
+
+Install as per OS instructions, then use pip to install the python bindings.
+Don't forget to include your target language's trained data sets.
+
+```
+pip install python-tesseract
+```
