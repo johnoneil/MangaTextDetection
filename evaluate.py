@@ -83,7 +83,7 @@ def evaluate(actual, expected):
 
     if expected_char != actual_char:
       result.success = False;
-      result.failures[expected_char].append({ "actual" : actual_char, "actual_position" : actual.location(), "expected_position" : expected.location()});
+      result.failures[expected_char].append({ "actual" : actual_char, "actual_location" : actual.location(), "expected_location" : expected.location()});
 
     if expected.iseof(expected_char):
       result.success = False;
