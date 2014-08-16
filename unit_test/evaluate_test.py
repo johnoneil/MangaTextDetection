@@ -27,7 +27,7 @@ class TestEvaluate:
     result = evaluate.evaluate(actual, expected);
     assert result.success == False;
     assert result.count == 1;
-    assert result.failures == { u"し" : [{ "actual" : u"あ", "line" : 1, "position" : 1}] };
+    assert result.failures == { u"し" : [{ "actual" : u"あ", "actual_position": "1:1", "expected_position": "1:1"}] };
 
   def test_endofline_unix_doesnot_increase_count(self):
     actual = io.StringIO(u"\n");
@@ -59,5 +59,21 @@ class TestEvaluate:
     result = evaluate.evaluate(actual, expected);
     assert result.success == False;
     assert result.count == 1;
-    assert result.failures == { u"し" : [{ "actual" : u"あ", "line" : 2, "position" : 1}] };
+    assert result.failures == { u"し" : [{ "actual" : u"あ", "actual_position": "2:1", "expected_position": "2:1"}] };
+
+  def test_endoffile_mismatch_more_in_actual(self):
+    actual = io.StringIO(u"あ\r\nし");
+    expected = io.StringIO(u"あ\r\n");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 1;
+    assert result.failures == { u"EOF" : [{ "actual" : u"し", "actual_position": "2:1", "expected_position": "2:0"}] };
+
+  def test_endoffile_mismatch_more_in_expected(self):
+    actual = io.StringIO(u"あ\r\n");
+    expected = io.StringIO(u"あ\r\nし");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 2;
+    assert result.failures == { u"し" : [{ "actual" : u"EOF", "actual_position": "2:0", "expected_position": "2:1"}] };
 

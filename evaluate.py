@@ -18,24 +18,50 @@ class Evaluation:
     self.count = 0;
     self.failures = collections.defaultdict(list);
 
-_newline = u"NL";
-
-def _read(stream):
+class EvaluationStream():
   """
-  Read a single unicode character from a stream and ignore windows \r characters by reading the next character.
-  \n is rewritten as NL so that mismatches are printable characters.
+  Wrap an io.TextIOBase to provide Evaluation support.
+
+  :param stream: io.TextIOBase of the actual ocr results
   """
-  char = stream.read(1);
-  while u"\r" == char:
-    char = stream.read(1);
+  def __init__(self, stream):
+    self._stream = stream;
+    self._newline = u"NL";
+    self._eof = u"EOF";
+    self._line = 1;
+    self._position = 0;
+    self.count = 0;
 
-  if u"\n" == char:
-    char = _newline;
+  def read(self):
+    """
+    As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
+    \n is rewritten as NL so that mismatches are printable characters.
+    end of file is rewritten as EOF for printability.
+    """
+    char = self._stream.read(1);
+    while u"\r" == char:
+      char = self._stream.read(1);
 
-  return char;
+    if u"" == char:
+      char = self._eof;
+    elif u"\n" == char:
+      char = self._newline;
+      self._line += 1;
+      self._position = 0;
+    else:
+      self._position += 1;
+      self.count += 1;
 
-def _isnewline(char):
-  return _newline == char;
+    return char;
+
+  def isnewline(self, char):
+    return self._newline == char;
+
+  def iseof(self, char):
+    return self._eof == char;
+
+  def location(self):
+    return "{0:d}:{1:d}".format(self._line, self._position);
 
 def evaluate(actual, expected):
   """
@@ -45,28 +71,25 @@ def evaluate(actual, expected):
   :param expected: io.TextIOBase of the expected ocr results
   """
   result = Evaluation();
-  line = 1;
-  column = 0;
+  actual = EvaluationStream(actual);
+  expected = EvaluationStream(expected);
   while True:
-    expected_char = _read(expected);
-    actual_char = _read(actual);
-    if expected_char == "" or actual_char == "":
+    expected_char = expected.read();
+    actual_char = actual.read();
+    if expected.iseof(expected_char) and actual.iseof(actual_char):
       if result.success == None:
         result.success = True;
       break;
 
-    if _isnewline(expected_char) and _isnewline(actual_char):
-      line += 1;
-      column = 0;
-    else:
-      result.count += 1;
-      column += 1;
-
     if expected_char != actual_char:
       result.success = False;
-      result.failures[expected_char].append({ "actual" : actual_char, "line" : line, "position" : column});
+      result.failures[expected_char].append({ "actual" : actual_char, "actual_position" : actual.location(), "expected_position" : expected.location()});
 
+    if expected.iseof(expected_char):
+      result.success = False;
+      break;
 
+  result.count = expected.count;
   return result;
 
 
