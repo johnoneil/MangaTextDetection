@@ -77,3 +77,16 @@ class TestEvaluate:
     assert result.count == 2;
     assert result.failures == { u"し" : [{ "actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] };
 
+  def test_out_of_sync_stream(self):
+    actual = io.StringIO(u"ぃ　あし\r\n");
+    expected = io.StringIO(u"いあし\r\n");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 3;
+    assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}] };
+
+  def test_peek_when_empty(self):
+    stream = io.StringIO();
+    OUT = evaluate.EvaluationStream(stream);
+    assert evaluate.EvaluationStream.iseof(OUT.peek(1));
+    assert evaluate.EvaluationStream.iseof(OUT.peek(2));
