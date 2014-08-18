@@ -88,5 +88,22 @@ class TestEvaluate:
   def test_peek_when_empty(self):
     stream = io.StringIO();
     OUT = evaluate.EvaluationStream(stream);
-    assert evaluate.EvaluationStream.iseof(OUT.peek(1));
-    assert evaluate.EvaluationStream.iseof(OUT.peek(2));
+    assert OUT.iseof(OUT.peek(1));
+    assert OUT.iseof(OUT.peek(2));
+
+  def test_peek(self):
+    stream = io.StringIO(u"いあし\r\n");
+    OUT = evaluate.EvaluationStream(stream);
+    assert u"い" == OUT.peek(1);
+    assert "1:0" == OUT.location();
+    assert u"あ" == OUT.peek(2);
+    assert "1:0" == OUT.location();
+    assert u"し" == OUT.peek(3);
+    assert "1:0" == OUT.location();
+    assert OUT.isnewline(OUT.peek(4));
+    assert "1:0" == OUT.location();
+    assert OUT.iseof(OUT.peek(5));
+    assert "1:0" == OUT.location();
+
+  def test_success_statistics(self):
+    assert False, "Implement: Every successful match should increment counter on that character. Should also check whether failed results ever success correctly."
