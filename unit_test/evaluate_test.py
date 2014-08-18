@@ -106,4 +106,25 @@ class TestEvaluate:
     assert "1:0" == OUT.location();
 
   def test_success_statistics(self):
-    assert False, "Implement: Every successful match should increment counter on that character. Should also check whether failed results ever success correctly."
+    actual = io.StringIO(u"ぃ　あしろろる\r\n");
+    expected = io.StringIO(u"いあしるろる\r\n");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 6;
+    assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}],
+                                u"る" : [{ "actual" : u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
+                               };
+    assert result.successes == {
+                                u"あ" : ["1:2"],
+                                u"し" : ["1:3"],
+                                u"ろ" : ["1:5"],
+                                u"る" : ["1:6"]
+                                };
+    assert result.percentages() == {
+                                    u"い" : 0.0,
+                                    u"あ" : 1.0,
+                                    u"し" : 1.0,
+                                    u"る" : 0.5,
+                                    u"ろ" : 1.0
+                                   };
+

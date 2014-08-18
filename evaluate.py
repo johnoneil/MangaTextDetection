@@ -17,6 +17,17 @@ class Evaluation:
     self.success = None;
     self.count = 0;
     self.failures = collections.defaultdict(list);
+    self.successes = collections.defaultdict(list);
+
+  def percentages(self):
+    keys = set(self.successes.iterkeys()).union(self.failures.iterkeys());
+    result = {};
+    for key in keys:
+      failure_count = len(self.failures[key]) if key in self.failures else 0
+      success_count = len(self.successes[key]) if key in self.successes else 0;
+      result[key] = success_count / float( failure_count + success_count );
+
+    return result;
 
 class EvaluationStream():
   """
@@ -158,10 +169,14 @@ def evaluate(actual, expected):
       actual_char = actual.resync(actual_char, expected);
       failure_details["actual"] = actual_char; # resync'ing changes location to the end of the sync, and we want the beginning
       result.failures[expected_char].append(failure_details);
+    else:
+      if not expected.isnewline(expected_char):
+        result.successes[expected_char].append(expected.location());
 
     if expected.iseof(expected_char):
       result.success = False;
       break;
+
 
   result.count = expected.count;
   return result;
