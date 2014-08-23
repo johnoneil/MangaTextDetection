@@ -85,6 +85,28 @@ class TestEvaluate:
     assert result.count == 3;
     assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}] };
 
+  def test_out_of_sync_stream_actual_new_lined_early(self):
+    actual = io.StringIO(u"新しい\nしごと");
+    expected = io.StringIO(u"新しいむすこ\nしごと\n");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 9;
+    assert result.failures == { u"む" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:4"}],
+                                u"す" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:5"}],
+                                u"こ" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:6"}],
+                                };
+
+  def test_out_of_sync_stream_expected_new_lined_early(self):
+    actual = io.StringIO(u"新しいむすこ\nしごと\n");
+    expected = io.StringIO(u"新しい\nしごと");
+    result = evaluate.evaluate(actual, expected);
+    assert result.success == False;
+    assert result.count == 6;
+    assert result.failures == { u"NL" : [{ "actual" : u"む", "actual_location": "1:4", "expected_location": "2:0"},
+                                         { "actual" : u"す", "actual_location": "1:5", "expected_location": "2:0"},
+                                         { "actual" : u"こ", "actual_location": "1:6", "expected_location": "2:0"}]
+                              };
+
   def test_peek_when_empty(self):
     stream = io.StringIO();
     OUT = evaluate.EvaluationStream(stream);
