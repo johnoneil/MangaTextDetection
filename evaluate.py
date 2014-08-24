@@ -22,13 +22,87 @@ import logging
 
 logger = logging.getLogger(__name__);
 
+class IgnoreUnderscoreEncoder(json.JSONEncoder):
+    def default(self, obj):
+        attributes = {}
+        obj_dict = obj.__dict__
+        for key, value in obj_dict.iteritems():
+          if key.startswith(u'_'):
+              continue
+          attributes[key] = value
+        return attributes
+
 class Evaluation:
-  def __init__(self):
+  def __init__(self,expected_stream,actual_stream):
     self.success = None;
     self.count = 0;
     self.failures = collections.defaultdict(list);
     self.successes = collections.defaultdict(list);
     self._percentages = None;
+    self._actual = EvaluationStream(actual_stream);
+    self._expected = EvaluationStream(expected_stream);
+
+  def evaluate(self):
+    """
+    Evaluate the actual ocr results against the expected results and provide metrics on failures.
+    """
+
+    if logger.isEnabledFor(logging.DEBUG):
+      sys.stdout.write("Debug Legend:\n");
+      sys.stdout.write("  . = matched\n");
+      sys.stdout.write("  X = failed\n");
+      sys.stdout.write("  s = skipped\n");
+
+    while True:
+      expected_char = self._expected.read();
+      actual_char = self._actual.read();
+      if EvaluationStream.iseof(expected_char) and EvaluationStream.iseof(actual_char):
+        if self.success == None:
+          self.success = True;
+        break;
+
+      up_to_count = self._expected.count;
+
+      if expected_char != actual_char:
+        self.success = False;
+        failure_details = { u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
+        if EvaluationStream.isnewline(expected_char):
+          # Resync other stream to the next newline
+          while not (EvaluationStream.isnewline(actual_char) or EvaluationStream.iseof(actual_char)):
+            failure_details = { u"actual" : actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
+            self.failures[expected_char].append(failure_details);
+            actual_char = self._actual.read();
+        elif EvaluationStream.isnewline(actual_char):
+          # Resync other stream to the next newline
+          while not (EvaluationStream.isnewline(expected_char) or EvaluationStream.iseof(expected_char)):
+            failure_details = { u"actual" : actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
+            self.failures[expected_char].append(failure_details);
+            expected_char = self._expected.read();
+        else:
+          actual_char = self._actual.resync(actual_char, self._expected);
+          failure_details[u"actual"] = actual_char; # resync'ing changes location to the end of the sync, and we want the beginning
+          self.failures[expected_char].append(failure_details);
+          if logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write("X");
+            if len(actual_char) > 1:
+              sys.stdout.write("s" * (len(actual_char)-1));
+      else:
+        if not EvaluationStream.isnewline(expected_char):
+          self.successes[expected_char].append(self._expected.location());
+          if logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write(".");
+        else:
+          if logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write("\n");
+
+      if EvaluationStream.iseof(expected_char):
+        self.success = False;
+        break;
+
+    sys.stdout.write("\n");
+    sys.stdout.flush();
+    self.count = self._expected.count;
+    return self;
 
   def percentages(self):
     if not self._percentages:
@@ -189,76 +263,6 @@ class EvaluationStream():
 
     return current_char;
 
-
-def evaluate(actual, expected):
-  """
-  Evaluate the actual ocr results against the expected results and provide metrics on failures.
-
-  :param actual: io.TextIOBase of the actual ocr results
-  :param expected: io.TextIOBase of the expected ocr results
-  """
-  result = Evaluation();
-  actual = EvaluationStream(actual);
-  expected = EvaluationStream(expected);
-
-  if logger.isEnabledFor(logging.DEBUG):
-    sys.stdout.write("Debug Legend:\n");
-    sys.stdout.write("  . = matched\n");
-    sys.stdout.write("  X = failed\n");
-    sys.stdout.write("  s = skipped\n");
-
-  while True:
-    expected_char = expected.read();
-    actual_char = actual.read();
-    if EvaluationStream.iseof(expected_char) and EvaluationStream.iseof(actual_char):
-      if result.success == None:
-        result.success = True;
-      break;
-
-    up_to_count = expected.count;
-
-    if expected_char != actual_char:
-      result.success = False;
-      failure_details = { u"actual_location" : actual.location(), u"expected_location" : expected.location()};
-      if EvaluationStream.isnewline(expected_char):
-        # Resync other stream to the next newline
-        while not (EvaluationStream.isnewline(actual_char) or EvaluationStream.iseof(actual_char)):
-          failure_details = { u"actual" : actual_char, u"actual_location" : actual.location(), u"expected_location" : expected.location()};
-          result.failures[expected_char].append(failure_details);
-          actual_char = actual.read();
-      elif EvaluationStream.isnewline(actual_char):
-        # Resync other stream to the next newline
-        while not (EvaluationStream.isnewline(expected_char) or EvaluationStream.iseof(expected_char)):
-          failure_details = { u"actual" : actual_char, u"actual_location" : actual.location(), u"expected_location" : expected.location()};
-          result.failures[expected_char].append(failure_details);
-          expected_char = expected.read();
-      else:
-        actual_char = actual.resync(actual_char, expected);
-        failure_details[u"actual"] = actual_char; # resync'ing changes location to the end of the sync, and we want the beginning
-        result.failures[expected_char].append(failure_details);
-        if logger.isEnabledFor(logging.DEBUG):
-          sys.stdout.write("X");
-          if len(actual_char) > 1:
-            sys.stdout.write("s" * (len(actual_char)-1));
-    else:
-      if not EvaluationStream.isnewline(expected_char):
-        result.successes[expected_char].append(expected.location());
-        if logger.isEnabledFor(logging.DEBUG):
-          sys.stdout.write(".");
-      else:
-        if logger.isEnabledFor(logging.DEBUG):
-          sys.stdout.write("\n");
-
-    if EvaluationStream.iseof(expected_char):
-      result.success = False;
-      break;
-
-
-  sys.stdout.write("\n");
-  sys.stdout.flush();
-  result.count = expected.count;
-  return result;
-
 def main():
   parser = argparse.ArgumentParser(description="Evaluate text against correct version.");
   parser.add_argument("-c", "--correct", dest="correct_file", help="File containing the correct text");
@@ -282,10 +286,11 @@ def main():
     sys.exit(-1);
 
   with codecs.open(correct_file, "rU", "utf-8") as c, codecs.open(input_file, "rU", "utf-8") as i:
-    result = evaluate(i, c);
+    result = Evaluation(c, i);
+    result.evaluate();
 
   with codecs.open(results_file, "wU", "utf-8") as w:
-    json.dump(result.__dict__, w, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True)
+    json.dump(result, w, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True);
 
   print(u"Summary of evaluation results:");
   print(u"results={0}".format(results_file));
