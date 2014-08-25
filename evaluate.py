@@ -93,11 +93,11 @@ class Evaluation:
   def handleMismatch(self):
     self.success = False
     if EvaluationStream.isnewline(self._expected_char): # Resync actual stream to the next newline
-      while not EvaluationStream.isnewline(self._actual_char) or EvaluationStream.iseof(self._actual_char):
+      while not EvaluationStream.isnewline(self._actual_char) and not EvaluationStream.iseof(self._actual_char):
         self.markFailure()
         self.readFromActual()
     elif EvaluationStream.isnewline(self._actual_char): # Resync expected stream to the next newline
-      while not EvaluationStream.isnewline(self._expected_char) or EvaluationStream.iseof(self._expected_char):
+      while not EvaluationStream.isnewline(self._expected_char) and not EvaluationStream.iseof(self._expected_char):
         self.markFailure()
         self.readFromExpected()
     else:
@@ -124,6 +124,7 @@ class Evaluation:
       sys.stdout.write("  . = matched\n")
       sys.stdout.write("  X = failed\n")
       sys.stdout.write("  s = skipped\n")
+      sys.stdout.write("  _ = skipped extra whitespace\n")
       sys.stdout.write("  E = End of File (expected)\n")
       sys.stdout.write("  e = End of File (actual)\n")
 

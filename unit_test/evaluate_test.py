@@ -162,4 +162,3 @@ class TestEvaluate:
                                     u"る" : 0.5,
                                     u"ろ" : 1.0
                                    }
-
