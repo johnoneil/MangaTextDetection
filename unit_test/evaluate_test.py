@@ -34,7 +34,7 @@ class TestEvaluate:
     assert result.count == 1
     assert result.failures == { u"し" : [{ "actual" : u"あ", "actual_location": "1:1", "expected_location": "1:1"}] }
 
-  def test_endofline_unix_does_not_increase_count(self):
+  def test_newline_unix_does_not_increase_count(self):
     actual = io.StringIO(u"\n")
     expected = io.StringIO(u"\n")
     result = Evaluation(expected,actual)
@@ -43,7 +43,7 @@ class TestEvaluate:
     assert result.count == 0
     assert result.failures == {}
 
-  def test_endofline_windows_does_not_increase_count(self):
+  def test_newline_windows_does_not_increase_count(self):
     actual = io.StringIO(u"\r\n")
     expected = io.StringIO(u"\r\n")
     result = Evaluation(expected,actual)
@@ -52,7 +52,7 @@ class TestEvaluate:
     assert result.count == 0
     assert result.failures == {}
 
-  def test_endofline_mixed_unix_and_windows_does_not_increase_count(self):
+  def test_newline_mixed_unix_and_windows_does_not_increase_count(self):
     actual = io.StringIO(u"\n")
     expected = io.StringIO(u"\r\n")
     result = Evaluation(expected,actual)
@@ -88,7 +88,7 @@ class TestEvaluate:
     assert result.count == 2
     assert result.failures == { u"し" : [{ "actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] }
 
-  def test_mismatch_prior_to_endofline(self):
+  def test_mismatch_prior_to_newline(self):
     actual = io.StringIO(u"\"\nいあ")
     expected = io.StringIO(u"。\nいあ")
     result = Evaluation(expected,actual)
@@ -97,7 +97,7 @@ class TestEvaluate:
     assert result.count == 3
     assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
 
-  def test_mismatch_prior_to_endofline_windows(self):
+  def test_mismatch_prior_to_newline_windows(self):
     actual = io.StringIO(u"\"\r\nいあ")
     expected = io.StringIO(u"。\r\nいあ")
     result = Evaluation(expected,actual)
@@ -106,7 +106,7 @@ class TestEvaluate:
     assert result.count == 3
     assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
 
-  def test_mismatch_prior_to_endofline_followed_by_another_endofline(self):
+  def test_mismatch_prior_to_newline_followed_by_another_newline(self):
     actual = io.StringIO(u"\"\n\nいあ")
     expected = io.StringIO(u"。\n\nいあ")
     result = Evaluation(expected,actual)
@@ -115,7 +115,7 @@ class TestEvaluate:
     assert result.count == 3
     assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
 
-  def test_mismatch_prior_to_endofline_followed_by_another_endofline_windows(self):
+  def test_mismatch_prior_to_newline_followed_by_another_newline_windows(self):
     actual = io.StringIO(u"\"\r\n\r\nいあ")
     expected = io.StringIO(u"。\r\n\r\nいあ")
     result = Evaluation(expected,actual)
@@ -124,7 +124,7 @@ class TestEvaluate:
     assert result.count == 3
     assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
 
-  def skip_test_out_of_sync_stream(self):
+  def test_out_of_sync_stream(self):
     actual = io.StringIO(u"ぃ　あし\r\n")
     expected = io.StringIO(u"いあし\r\n")
     result = Evaluation(expected,actual)
@@ -132,6 +132,15 @@ class TestEvaluate:
     assert result.success == False
     assert result.count == 3
     assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}] }
+
+  def test_out_of_sync_stream_two_deep(self):
+    actual = io.StringIO(u"ぃ　'あし\r\n")
+    expected = io.StringIO(u"いあし\r\n")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 3
+    assert result.failures == { u"い" : [{ "actual" : u"ぃ　'", "actual_location": "1:1", "expected_location": "1:1"}] }
 
   def test_out_of_sync_stream_actual_new_lined_early(self):
     actual = io.StringIO(u"新しい\nしごと")
@@ -157,7 +166,7 @@ class TestEvaluate:
                                          { "actual" : u"こ", "actual_location": "1:6", "expected_location": "2:0"}]
                               }
 
-  def test_out_of_sync_stream_doesnt_sync_past_endofline(self):
+  def test_out_of_sync_stream_doesnt_sync_past_newline(self):
     actual =   io.StringIO(u"新しいむすあ\nこしごと\n")
     expected = io.StringIO(u"新しいむすこ\nしごと\n")
     result = Evaluation(expected,actual)

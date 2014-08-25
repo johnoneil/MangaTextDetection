@@ -43,7 +43,7 @@ class Evaluation:
     self._expected = EvaluationStream(expected_stream)
     self._actual_char = None
     self._expected_char = None
-    self._max_peek_lookahead = 2
+    self._max_peek_lookahead = 3
 
   def readFromExpected(self):
     self._expected_char = self._expected.read()
@@ -61,12 +61,14 @@ class Evaluation:
         sys.stdout.write("E")
       elif EvaluationStream.iseof(self._actual_char):
         sys.stdout.write("e")
+      elif EvaluationStream.isnewline(self._expected_char) or EvaluationStream.isnewline(self._actual_char):
+        sys.stdout.write("$")
       elif EvaluationStream.isspace(self._actual_char):
         sys.stdout.write("_")
       else:
         sys.stdout.write("X")
-      if len(self._actual_char) > 1:
-        sys.stdout.write("s" * (len(self._actual_char)-1))
+        if len(self._actual_char) > 1:
+          sys.stdout.write("s" * (len(self._actual_char)-1))
     logger.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
 
   def resyncActual(self):
@@ -130,6 +132,7 @@ class Evaluation:
       sys.stdout.write("  X = failed\n")
       sys.stdout.write("  s = skipped\n")
       sys.stdout.write("  _ = skipped extra whitespace\n")
+      sys.stdout.write("  $ = End of Line (expected or actual)")
       sys.stdout.write("  E = End of File (expected)\n")
       sys.stdout.write("  e = End of File (actual)\n")
 
