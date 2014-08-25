@@ -50,6 +50,19 @@ class Evaluation:
   def readFromActual(self):
     self._actual_char = self._actual.read()
 
+  def markFailure(self, actual_location=None):
+    if not actual_location:
+      actual_location = self._actual.location();
+    failure_details = {u"actual":self._actual_char, u"actual_location":actual_location, u"expected_location":self._expected.location()};
+    self.failures[self._expected_char].append(failure_details);
+    if logger.isEnabledFor(logging.DEBUG):
+      sys.stdout.write("X");
+      if len(self._actual_char) > 1:
+        sys.stdout.write("s" * (len(self._actual_char)-1));
+
+  def resyncActual(self):
+    self._actual_char = self._actual.resync(self._actual_char, self._expected);
+
   def evaluate(self):
     """
     Evaluate the actual ocr results against the expected results and provide metrics on failures.
@@ -73,27 +86,20 @@ class Evaluation:
 
       if self._expected_char != self._actual_char:
         self.success = False;
-        failure_details = { u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
         if EvaluationStream.isnewline(self._expected_char):
           # Resync other stream to the next newline
           while not (EvaluationStream.isnewline(self._actual_char) or EvaluationStream.iseof(self._actual_char)):
-            failure_details = { u"actual" : self._actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
-            self.failures[self._expected_char].append(failure_details);
-            self._actual_char = self._actual.read();
+            self.markFailure();
+            self.readFromActual();
         elif EvaluationStream.isnewline(self._actual_char):
           # Resync other stream to the next newline
           while not (EvaluationStream.isnewline(self._expected_char) or EvaluationStream.iseof(self._expected_char)):
-            failure_details = { u"actual" : self._actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
-            self.failures[self._expected_char].append(failure_details);
-            self._expected_char = self._expected.read();
+            self.markFailure();
+            self.readFromExpected();
         else:
-          actual_char = self._actual.resync(self._actual_char, self._expected);
-          failure_details[u"actual"] = actual_char; # resync'ing changes location to the end of the sync, and we want the beginning
-          self.failures[self._expected_char].append(failure_details);
-          if logger.isEnabledFor(logging.DEBUG):
-            sys.stdout.write("X");
-            if len(actual_char) > 1:
-              sys.stdout.write("s" * (len(actual_char)-1));
+          mark_failure_position = self._actual.location()
+          self.resyncActual();
+          self.markFailure(mark_failure_position);
       else:
         if not EvaluationStream.isnewline(self._expected_char):
           self.successes[self._expected_char].append(self._expected.location());
