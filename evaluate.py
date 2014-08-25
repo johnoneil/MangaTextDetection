@@ -41,6 +41,14 @@ class Evaluation:
     self._percentages = None;
     self._actual = EvaluationStream(actual_stream);
     self._expected = EvaluationStream(expected_stream);
+    self._actual_char = None;
+    self._expected_char = None;
+
+  def readFromExpected(self):
+    self._expected_char = self._expected.read();
+
+  def readFromActual(self):
+    self._actual_char = self._actual.read()
 
   def evaluate(self):
     """
@@ -54,53 +62,54 @@ class Evaluation:
       sys.stdout.write("  s = skipped\n");
 
     while True:
-      expected_char = self._expected.read();
-      actual_char = self._actual.read();
-      if EvaluationStream.iseof(expected_char) and EvaluationStream.iseof(actual_char):
+      self.readFromExpected();
+      self.readFromActual();
+      if EvaluationStream.iseof(self._expected_char) and EvaluationStream.iseof(self._actual_char):
         if self.success == None:
           self.success = True;
         break;
 
       up_to_count = self._expected.count;
 
-      if expected_char != actual_char:
+      if self._expected_char != self._actual_char:
         self.success = False;
         failure_details = { u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
-        if EvaluationStream.isnewline(expected_char):
+        if EvaluationStream.isnewline(self._expected_char):
           # Resync other stream to the next newline
-          while not (EvaluationStream.isnewline(actual_char) or EvaluationStream.iseof(actual_char)):
-            failure_details = { u"actual" : actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
-            self.failures[expected_char].append(failure_details);
-            actual_char = self._actual.read();
-        elif EvaluationStream.isnewline(actual_char):
+          while not (EvaluationStream.isnewline(self._actual_char) or EvaluationStream.iseof(self._actual_char)):
+            failure_details = { u"actual" : self._actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
+            self.failures[self._expected_char].append(failure_details);
+            self._actual_char = self._actual.read();
+        elif EvaluationStream.isnewline(self._actual_char):
           # Resync other stream to the next newline
-          while not (EvaluationStream.isnewline(expected_char) or EvaluationStream.iseof(expected_char)):
-            failure_details = { u"actual" : actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
-            self.failures[expected_char].append(failure_details);
-            expected_char = self._expected.read();
+          while not (EvaluationStream.isnewline(self._expected_char) or EvaluationStream.iseof(self._expected_char)):
+            failure_details = { u"actual" : self._actual_char, u"actual_location" : self._actual.location(), u"expected_location" : self._expected.location()};
+            self.failures[self._expected_char].append(failure_details);
+            self._expected_char = self._expected.read();
         else:
-          actual_char = self._actual.resync(actual_char, self._expected);
+          actual_char = self._actual.resync(self._actual_char, self._expected);
           failure_details[u"actual"] = actual_char; # resync'ing changes location to the end of the sync, and we want the beginning
-          self.failures[expected_char].append(failure_details);
+          self.failures[self._expected_char].append(failure_details);
           if logger.isEnabledFor(logging.DEBUG):
             sys.stdout.write("X");
             if len(actual_char) > 1:
               sys.stdout.write("s" * (len(actual_char)-1));
       else:
-        if not EvaluationStream.isnewline(expected_char):
-          self.successes[expected_char].append(self._expected.location());
+        if not EvaluationStream.isnewline(self._expected_char):
+          self.successes[self._expected_char].append(self._expected.location());
           if logger.isEnabledFor(logging.DEBUG):
             sys.stdout.write(".");
         else:
           if logger.isEnabledFor(logging.DEBUG):
             sys.stdout.write("\n");
 
-      if EvaluationStream.iseof(expected_char):
+      if EvaluationStream.iseof(self._expected_char):
         self.success = False;
         break;
 
-    sys.stdout.write("\n");
-    sys.stdout.flush();
+    if logger.isEnabledFor(logging.DEBUG):
+      sys.stdout.write("\n");
+      sys.stdout.flush();
     self.count = self._expected.count;
     return self;
 
