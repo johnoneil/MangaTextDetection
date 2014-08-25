@@ -88,6 +88,42 @@ class TestEvaluate:
     assert result.count == 2
     assert result.failures == { u"し" : [{ "actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] }
 
+  def test_mismatch_prior_to_endofline(self):
+    actual = io.StringIO(u"\"\nいあ")
+    expected = io.StringIO(u"。\nいあ")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 3
+    assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+
+  def test_mismatch_prior_to_endofline_windows(self):
+    actual = io.StringIO(u"\"\r\nいあ")
+    expected = io.StringIO(u"。\r\nいあ")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 3
+    assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+
+  def test_mismatch_prior_to_endofline_followed_by_another_endofline(self):
+    actual = io.StringIO(u"\"\n\nいあ")
+    expected = io.StringIO(u"。\n\nいあ")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 3
+    assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+
+  def test_mismatch_prior_to_endofline_followed_by_another_endofline_windows(self):
+    actual = io.StringIO(u"\"\r\n\r\nいあ")
+    expected = io.StringIO(u"。\r\n\r\nいあ")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 3
+    assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+
   def test_out_of_sync_stream(self):
     actual = io.StringIO(u"ぃ　あし\r\n")
     expected = io.StringIO(u"いあし\r\n")
@@ -164,6 +200,7 @@ class TestEvaluate:
                                     u"る" : 0.5,
                                     u"ろ" : 1.0
                                    }
+
   def test_extra_whitespace(self):
     actual = io.StringIO(u"新 し い むすこ\nし ご と")
     expected = io.StringIO(u"新しいむすこ\nしごと\n")

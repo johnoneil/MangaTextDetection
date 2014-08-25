@@ -83,6 +83,7 @@ class Evaluation:
       candidate_sync_spot = self._actual.peek(i)
       if sync_to_char == candidate_sync_spot:
         resync_found_ahead_at = i
+        break
 
     if resync_found_ahead_at:
       while (resync_found_ahead_at > 1): # capture up to (but not including) the resync character
