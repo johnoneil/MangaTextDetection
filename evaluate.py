@@ -61,6 +61,8 @@ class Evaluation:
         sys.stdout.write("E")
       elif EvaluationStream.iseof(self._actual_char):
         sys.stdout.write("e")
+      elif EvaluationStream.isspace(self._actual_char):
+        sys.stdout.write("_")
       else:
         sys.stdout.write("X")
       if len(self._actual_char) > 1:
