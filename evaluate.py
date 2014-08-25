@@ -124,6 +124,8 @@ class Evaluation:
       sys.stdout.write("  . = matched\n")
       sys.stdout.write("  X = failed\n")
       sys.stdout.write("  s = skipped\n")
+      sys.stdout.write("  E = End of File (expected)\n")
+      sys.stdout.write("  e = End of File (actual)\n")
 
     while True:
       self.readFromExpected()
