@@ -43,6 +43,7 @@ class Evaluation:
     self._expected = EvaluationStream(expected_stream);
     self._actual_char = None;
     self._expected_char = None;
+    self._max_peek_lookahead = 2;
 
   def readFromExpected(self):
     self._expected_char = self._expected.read();
@@ -61,7 +62,26 @@ class Evaluation:
         sys.stdout.write("s" * (len(self._actual_char)-1));
 
   def resyncActual(self):
-    self._actual_char = self._actual.resync(self._actual_char, self._expected);
+    """
+    Lookahead on the stream to see if re-syncing is required.
+    If re-syncing is required then the extra characters will be consumed and appended to self._actual_char
+    """
+    sync_to_char = self._expected.peek(1);
+
+    if EvaluationStream.iseof(sync_to_char):
+      # Dont resync on EOF
+      return;
+
+    resync_found_ahead_at = None;
+    for i in range(1, self._max_peek_lookahead+1):
+      candidate_sync_spot = self._actual.peek(i);
+      if sync_to_char == candidate_sync_spot:
+        resync_found_ahead_at = i;
+
+    if resync_found_ahead_at:
+      while (resync_found_ahead_at > 1): # capture up to (but not including) the resync character
+        resync_found_ahead_at -= 1;
+        self._actual_char += self._actual.read();
 
   def evaluate(self):
     """
@@ -187,7 +207,6 @@ class EvaluationStream():
     self._position = 0;
     self.count = 0;
     self._peek_buffer = collections.deque();
-    self._max_peek_lookahead = 2;
 
   def _read_with_translations(self):
     """
@@ -250,33 +269,6 @@ class EvaluationStream():
       self._peek_buffer.append(self._read_with_translations());
     result = self._peek_buffer[n-1];
     return result;
-
-  def resync(self, current_char, tostream):
-    """
-    Lookahead on the stream to see if re-syncing is required.
-    If re-syncing is required the the extra characters will be consumed and returned appended to current_char
-
-    :param current_char: the current failing character
-    :param tostream: the evaluation stream to sync to
-    """
-    sync_to_char = tostream.peek(1);
-
-    if EvaluationStream.iseof(sync_to_char):
-      # Dont resync on EOF
-      return current_char;
-
-    resync_found_ahead_at = None;
-    for i in range(1, self._max_peek_lookahead+1):
-      candidate_sync_spot = self.peek(i);
-      if sync_to_char == candidate_sync_spot:
-        resync_found_ahead_at = i;
-
-    if resync_found_ahead_at:
-      while (resync_found_ahead_at > 1): # capture up to (but not including) the resync character
-        resync_found_ahead_at -= 1;
-        current_char += self.read();
-
-    return current_char;
 
 def main():
   parser = argparse.ArgumentParser(description="Evaluate text against correct version.");
