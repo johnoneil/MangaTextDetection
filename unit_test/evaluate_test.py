@@ -209,18 +209,22 @@ class TestEvaluate:
                                 u"る" : [{ "actual" : u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
                                }
     assert result.successes == {
-                                u"あ" : ["1:2"],
-                                u"し" : ["1:3"],
-                                u"ろ" : ["1:5"],
-                                u"る" : ["1:6"]
+                                u"あ" : [{'actual_location': '1:3', 'expected_location': '1:2'}],
+                                u"し" : [{'actual_location': '1:4', 'expected_location': '1:3'}],
+                                u"ろ" : [{'actual_location': '1:6', 'expected_location': '1:5'}],
+                                u"る" : [{'actual_location': '1:7', 'expected_location': '1:6'}],
+                                u"NL" : [{'actual_location': '2:0', 'expected_location': '2:0'}]
                                 }
-    assert result.percentages() == {
+    result.calculate_percentages()
+    assert result.percentages == {
                                     u"い" : 0.0,
                                     u"あ" : 1.0,
                                     u"し" : 1.0,
                                     u"る" : 0.5,
-                                    u"ろ" : 1.0
+                                    u"ろ" : 1.0,
+                                    u"NL" : 1.0
                                    }
+    assert result.percentage_overall == 0.75
 
   def test_extra_whitespace(self):
     actual = io.StringIO(u"新 し い むすこ\nし ご と")

@@ -40,7 +40,8 @@ class Evaluation:
     self.count = 0
     self.failures = collections.defaultdict(list)
     self.successes = collections.defaultdict(list)
-    self._percentages = None
+    self.percentages = None
+    self.percentage_overall = None
     self._actual = EvaluationStream(actual_stream)
     self._expected = EvaluationStream(expected_stream)
     self._actual_char = None
@@ -116,8 +117,8 @@ class Evaluation:
       self.markFailure(mark_failure_position)
 
   def handleMatch(self):
+    self.successes[self._expected_char].append({"expected_location":self._expected.location(),"actual_location":self._actual.location()})
     if not EvaluationStream.isnewline(self._expected_char):
-      self.successes[self._expected_char].append(self._expected.location())
       if logger.isEnabledFor(logging.DEBUG):
         sys.stdout.write(".")
     elif logger.isEnabledFor(logging.DEBUG):
@@ -164,20 +165,16 @@ class Evaluation:
     self.count = self._expected.count
     return self
 
-  def percentages(self):
-    if not self._percentages:
-      keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
-      self._percentages = {}
-      for key in keys:
-        failure_count = len(self.failures[key]) if key in self.failures else 0
-        success_count = len(self.successes[key]) if key in self.successes else 0
-        self._percentages[key] = success_count / float( failure_count + success_count )
+  def calculate_percentages(self):
+    keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
+    self.percentages = {}
+    for key in keys:
+      failure_count = len(self.failures[key]) if key in self.failures else 0
+      success_count = len(self.successes[key]) if key in self.successes else 0
+      self.percentages[key] = success_count / float( failure_count + success_count )
 
-    return self._percentages
-
-  def overall(self):
-    values = self.percentages().values()
-    return sum(values)/len(values)
+    values = self.percentages.values()
+    self.percentage_overall = sum(values)/len(values)
 
   def __str__(self):
     return unicode(self).encode('utf-8')
@@ -205,7 +202,7 @@ class Evaluation:
     result = []
     result.append(u"success={0!s}".format(self.success))
     result.append(u"count={0:d}".format(self.count))
-    result.append(u"overall={0}".format(self.overall()))
+    result.append(u"overall={0}".format(self.percentage_overall))
     return u"\n".join(result)
 
 class EvaluationStream():
@@ -335,6 +332,7 @@ def main():
   with codecs.open(correct_file, "rU", "utf-8") as c, codecs.open(input_file, "rU", "utf-8") as i:
     result = Evaluation(c, i)
     result.evaluate()
+    result.calculate_percentages()
 
   with codecs.open(results_file, "wU", "utf-8") as w:
     json.dump(result, w, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True)
