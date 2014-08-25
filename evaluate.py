@@ -100,11 +100,13 @@ class Evaluation:
       while not EvaluationStream.isnewline(self._expected_char) and not EvaluationStream.iseof(self._expected_char):
         self.markFailure()
         self.readFromExpected()
+    elif EvaluationStream.isspace(self._actual_char) and self._expected_char == self._actual.peek(1): # ignore whitespace if the next char matches
+        self.markFailure()
+        self._expected.push_back(self._expected_char)
     else:
       mark_failure_position = self._actual.location()
       self.resyncActual()
       self.markFailure(mark_failure_position)
-
 
   def handleMatch(self):
     if not EvaluationStream.isnewline(self._expected_char):
@@ -216,6 +218,10 @@ class EvaluationStream():
   def iseof(char):
     return EvaluationStream._eof == char
 
+  @staticmethod
+  def isspace(char):
+    return u" " == char
+
   def __init__(self, stream):
     self._stream = stream
     self._line = 1
@@ -284,6 +290,14 @@ class EvaluationStream():
       self._peek_buffer.append(self._read_with_translations())
     result = self._peek_buffer[n-1]
     return result
+
+  def push_back(self, char):
+    assert not EvaluationStream.iseof(char)
+    assert not EvaluationStream.isnewline(char)
+    self._position -= 1
+    self.count -= 1
+
+    self._peek_buffer.appendleft(char)
 
 def main():
   parser = argparse.ArgumentParser(description="Evaluate text against correct version.")

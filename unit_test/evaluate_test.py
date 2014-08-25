@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import io
-from evaluate import Evaluation, EvaluationStream
+import json
+from evaluate import Evaluation, EvaluationStream, IgnoreUnderscoreEncoder
+import sys
 
 class TestEvaluate:
 
@@ -162,3 +164,17 @@ class TestEvaluate:
                                     u"る" : 0.5,
                                     u"ろ" : 1.0
                                    }
+  def test_extra_whitespace(self):
+    actual = io.StringIO(u"新 し い むすこ\nし ご と")
+    expected = io.StringIO(u"新しいむすこ\nしごと\n")
+    result = Evaluation(expected,actual)
+    result.evaluate()
+    assert result.success == False
+    assert result.count == 9
+    json.dump(result.failures, sys.stdout, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '))
+    assert result.failures == { u"し" : [{ "actual" : u" ", "actual_location": "1:2", "expected_location": "1:2"}],
+                               u"い" : [{ "actual" : u" ", "actual_location": "1:4", "expected_location": "1:3"}],
+                               u"む" : [{ "actual" : u" ", "actual_location": "1:6", "expected_location": "1:4"}],
+                               u"ご" : [{ "actual" : u" ", "actual_location": "2:2", "expected_location": "2:2"}],
+                               u"と" : [{ "actual" : u" ", "actual_location": "2:4", "expected_location": "2:3"}],
+                               }
