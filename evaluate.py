@@ -21,6 +21,8 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
+trace = logging.getLogger("trace")
+trace.setLevel(logging.INFO)
 
 class IgnoreUnderscoreEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -69,7 +71,7 @@ class Evaluation:
         sys.stdout.write("X")
         if len(self._actual_char) > 1:
           sys.stdout.write("s" * (len(self._actual_char)-1))
-    logger.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
+      trace.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
 
   def resyncActual(self):
     """
@@ -311,13 +313,16 @@ def main():
   parser.add_argument("-i", "--input", dest="input_file", required=True, help="File containing the text to compare against the correct version")
   parser.add_argument("-r", "--results", dest="results_file", help="File to write evaluation results to")
   parser.add_argument("-d", "--debug", action="store_true", help="Enable debug tracing")
+  parser.add_argument("-t", "--trace", action="store_true", help="Print out mismatches as they occur. Also enables debug")
 
   arg.value = parser.parse_args()
   correct_file = arg.string_value("correct_file", default_value="correct.txt")
   input_file = arg.string_value("input_file")
   results_file = arg.string_value("results_file", default_value=input_file+"-results.txt")
-  if arg.boolean_value("debug"):
+  if arg.boolean_value("debug") or arg.boolean_value("trace"):
     logging.getLogger().setLevel(logging.DEBUG)
+  if arg.boolean_value("trace"):
+    trace.setLevel(logging.DEBUG)
 
   if not os.path.isfile(input_file):
     print("Input file '{0}' does not exist. Use -h option for help".format(input_file))
