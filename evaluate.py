@@ -57,9 +57,15 @@ class Evaluation:
     failure_details = {u"actual":self._actual_char, u"actual_location":actual_location, u"expected_location":self._expected.location()}
     self.failures[self._expected_char].append(failure_details)
     if logger.isEnabledFor(logging.DEBUG):
-      sys.stdout.write("X")
+      if EvaluationStream.iseof(self._expected_char):
+        sys.stdout.write("E")
+      elif EvaluationStream.iseof(self._actual_char):
+        sys.stdout.write("e")
+      else:
+        sys.stdout.write("X")
       if len(self._actual_char) > 1:
         sys.stdout.write("s" * (len(self._actual_char)-1))
+    logger.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
 
   def resyncActual(self):
     """
@@ -83,6 +89,31 @@ class Evaluation:
         resync_found_ahead_at -= 1
         self._actual_char += self._actual.read()
 
+
+  def handleMismatch(self):
+    self.success = False
+    if EvaluationStream.isnewline(self._expected_char): # Resync actual stream to the next newline
+      while not EvaluationStream.isnewline(self._actual_char) or EvaluationStream.iseof(self._actual_char):
+        self.markFailure()
+        self.readFromActual()
+    elif EvaluationStream.isnewline(self._actual_char): # Resync expected stream to the next newline
+      while not EvaluationStream.isnewline(self._expected_char) or EvaluationStream.iseof(self._expected_char):
+        self.markFailure()
+        self.readFromExpected()
+    else:
+      mark_failure_position = self._actual.location()
+      self.resyncActual()
+      self.markFailure(mark_failure_position)
+
+
+  def handleMatch(self):
+    if not EvaluationStream.isnewline(self._expected_char):
+      self.successes[self._expected_char].append(self._expected.location())
+      if logger.isEnabledFor(logging.DEBUG):
+        sys.stdout.write(".")
+    elif logger.isEnabledFor(logging.DEBUG):
+      sys.stdout.write("\n")
+
   def evaluate(self):
     """
     Evaluate the actual ocr results against the expected results and provide metrics on failures.
@@ -105,29 +136,9 @@ class Evaluation:
       up_to_count = self._expected.count
 
       if self._expected_char != self._actual_char:
-        self.success = False
-        if EvaluationStream.isnewline(self._expected_char):
-          # Resync other stream to the next newline
-          while not (EvaluationStream.isnewline(self._actual_char) or EvaluationStream.iseof(self._actual_char)):
-            self.markFailure()
-            self.readFromActual()
-        elif EvaluationStream.isnewline(self._actual_char):
-          # Resync other stream to the next newline
-          while not (EvaluationStream.isnewline(self._expected_char) or EvaluationStream.iseof(self._expected_char)):
-            self.markFailure()
-            self.readFromExpected()
-        else:
-          mark_failure_position = self._actual.location()
-          self.resyncActual()
-          self.markFailure(mark_failure_position)
+        self.handleMismatch()
       else:
-        if not EvaluationStream.isnewline(self._expected_char):
-          self.successes[self._expected_char].append(self._expected.location())
-          if logger.isEnabledFor(logging.DEBUG):
-            sys.stdout.write(".")
-        else:
-          if logger.isEnabledFor(logging.DEBUG):
-            sys.stdout.write("\n")
+        self.handleMatch()
 
       if EvaluationStream.iseof(self._expected_char):
         self.success = False
@@ -136,6 +147,7 @@ class Evaluation:
     if logger.isEnabledFor(logging.DEBUG):
       sys.stdout.write("\n")
       sys.stdout.flush()
+
     self.count = self._expected.count
     return self
 
