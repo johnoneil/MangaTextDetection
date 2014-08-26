@@ -7,8 +7,6 @@ Desc: Evaluate the ocr esults against the expected output and provide metrics on
 Author: Barrie Treloar
 Email: baerrach@gmail.com
 DATE: 13th Aug 2014
-
-  TODO
 """
 
 import codecs
@@ -29,181 +27,181 @@ class IgnoreUnderscoreEncoder(json.JSONEncoder):
         attributes = {}
         obj_dict = obj.__dict__
         for key, value in obj_dict.iteritems():
-          if key.startswith(u'_'):
-              continue
-          attributes[key] = value
+            if key.startswith(u'_'):
+                continue
+            attributes[key] = value
         return attributes
 
 class Evaluation:
-  def __init__(self,expected_stream,actual_stream):
-    self.success = None
-    self.count = 0
-    self.failures = collections.defaultdict(list)
-    self.successes = collections.defaultdict(list)
-    self.percentages = None
-    self.percentage_overall = None
-    self._actual = EvaluationStream(actual_stream)
-    self._expected = EvaluationStream(expected_stream)
-    self._actual_char = None
-    self._expected_char = None
-    self._max_peek_lookahead = 3
+    def __init__(self, expected_stream, actual_stream):
+        self.success = None
+        self.count = 0
+        self.failures = collections.defaultdict(list)
+        self.successes = collections.defaultdict(list)
+        self.percentages = None
+        self.percentage_overall = None
+        self._actual = EvaluationStream(actual_stream)
+        self._expected = EvaluationStream(expected_stream)
+        self._actual_char = None
+        self._expected_char = None
+        self._max_peek_lookahead = 3
 
-  def readFromExpected(self):
-    self._expected_char = self._expected.read()
+    def readFromExpected(self):
+        self._expected_char = self._expected.read()
 
-  def readFromActual(self):
-    self._actual_char = self._actual.read()
+    def readFromActual(self):
+        self._actual_char = self._actual.read()
 
-  def markFailure(self, actual_location=None):
-    if not actual_location:
-      actual_location = self._actual.location()
-    failure_details = {u"actual":self._actual_char, u"actual_location":actual_location, u"expected_location":self._expected.location()}
-    self.failures[self._expected_char].append(failure_details)
-    if logger.isEnabledFor(logging.DEBUG):
-      if EvaluationStream.iseof(self._expected_char):
-        sys.stdout.write("E")
-      elif EvaluationStream.iseof(self._actual_char):
-        sys.stdout.write("e")
-      elif EvaluationStream.isnewline(self._expected_char) or EvaluationStream.isnewline(self._actual_char):
-        sys.stdout.write("$")
-      elif EvaluationStream.isspace(self._actual_char):
-        sys.stdout.write("_")
-      else:
-        sys.stdout.write("X")
-        if len(self._actual_char) > 1:
-          sys.stdout.write("s" * (len(self._actual_char)-1))
-      trace.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
+    def markFailure(self, actual_location=None):
+        if not actual_location:
+            actual_location = self._actual.location()
+        failure_details = {u"actual":self._actual_char, u"actual_location":actual_location, u"expected_location":self._expected.location()}
+        self.failures[self._expected_char].append(failure_details)
+        if logger.isEnabledFor(logging.DEBUG):
+            if EvaluationStream.iseof(self._expected_char):
+                sys.stdout.write("E")
+            elif EvaluationStream.iseof(self._actual_char):
+                sys.stdout.write("e")
+            elif EvaluationStream.isnewline(self._expected_char) or EvaluationStream.isnewline(self._actual_char):
+                sys.stdout.write("$")
+            elif EvaluationStream.isspace(self._actual_char):
+                sys.stdout.write("_")
+            else:
+                sys.stdout.write("X")
+                if len(self._actual_char) > 1:
+                    sys.stdout.write("s" * (len(self._actual_char) - 1))
+                trace.debug(u"expected='{0}' actual='{1}' expected_location={2} actual_location={3}".format(self._expected_char, self._actual_char, self._expected.location(), self._actual.location()))
 
-  def resyncActual(self):
-    """
-    Lookahead on the stream to see if re-syncing is required.
-    If re-syncing is required then the extra characters will be consumed and appended to self._actual_char
-    """
-    sync_to_char = self._expected.peek(1)
+    def resyncActual(self):
+        """
+        Lookahead on the stream to see if re-syncing is required.
+        If re-syncing is required then the extra characters will be consumed and appended to self._actual_char
+        """
+        sync_to_char = self._expected.peek(1)
 
-    if EvaluationStream.iseof(sync_to_char):
-      # Dont resync on EOF
-      return
+        if EvaluationStream.iseof(sync_to_char):
+            # Dont resync on EOF
+            return
 
-    resync_found_ahead_at = None
-    for i in range(1, self._max_peek_lookahead+1):
-      candidate_sync_spot = self._actual.peek(i)
-      if sync_to_char == candidate_sync_spot:
-        resync_found_ahead_at = i
-        break
+        resync_found_ahead_at = None
+        for i in range(1, self._max_peek_lookahead + 1):
+            candidate_sync_spot = self._actual.peek(i)
+            if sync_to_char == candidate_sync_spot:
+                resync_found_ahead_at = i
+                break
 
-    if resync_found_ahead_at:
-      while (resync_found_ahead_at > 1): # capture up to (but not including) the resync character
-        resync_found_ahead_at -= 1
-        self._actual_char += self._actual.read()
+        if resync_found_ahead_at:
+            while (resync_found_ahead_at > 1):  # capture up to (but not including) the resync character
+                resync_found_ahead_at -= 1
+                self._actual_char += self._actual.read()
 
 
-  def handleMismatch(self):
-    self.success = False
-    if EvaluationStream.isnewline(self._expected_char): # Resync actual stream to the next newline
-      while not EvaluationStream.isnewline(self._actual_char) and not EvaluationStream.iseof(self._actual_char):
-        self.markFailure()
-        self.readFromActual()
-    elif EvaluationStream.isnewline(self._actual_char): # Resync expected stream to the next newline
-      while not EvaluationStream.isnewline(self._expected_char) and not EvaluationStream.iseof(self._expected_char):
-        self.markFailure()
-        self.readFromExpected()
-    elif EvaluationStream.isspace(self._actual_char) and self._expected_char == self._actual.peek(1): # ignore whitespace if the next char matches
-        self.markFailure()
-        self._expected.push_back(self._expected_char)
-    else:
-      mark_failure_position = self._actual.location()
-      self.resyncActual()
-      self.markFailure(mark_failure_position)
-
-  def handleMatch(self):
-    self.successes[self._expected_char].append({"expected_location":self._expected.location(),"actual_location":self._actual.location()})
-    if not EvaluationStream.isnewline(self._expected_char):
-      if logger.isEnabledFor(logging.DEBUG):
-        sys.stdout.write(".")
-    elif logger.isEnabledFor(logging.DEBUG):
-      sys.stdout.write("\n")
-
-  def evaluate(self):
-    """
-    Evaluate the actual ocr results against the expected results and provide metrics on failures.
-    """
-
-    if logger.isEnabledFor(logging.DEBUG):
-      sys.stdout.write("Debug Legend:\n")
-      sys.stdout.write("  . = matched\n")
-      sys.stdout.write("  X = failed\n")
-      sys.stdout.write("  s = skipped\n")
-      sys.stdout.write("  _ = skipped extra whitespace\n")
-      sys.stdout.write("  $ = End of Line (expected or actual)")
-      sys.stdout.write("  E = End of File (expected)\n")
-      sys.stdout.write("  e = End of File (actual)\n")
-
-    while True:
-      self.readFromExpected()
-      self.readFromActual()
-      if EvaluationStream.iseof(self._expected_char) and EvaluationStream.iseof(self._actual_char):
-        if self.success == None:
-          self.success = True
-        break
-
-      up_to_count = self._expected.count
-
-      if self._expected_char != self._actual_char:
-        self.handleMismatch()
-      else:
-        self.handleMatch()
-
-      if EvaluationStream.iseof(self._expected_char):
+    def handleMismatch(self):
         self.success = False
-        break
+        if EvaluationStream.isnewline(self._expected_char):  # Resync actual stream to the next newline
+            while not EvaluationStream.isnewline(self._actual_char) and not EvaluationStream.iseof(self._actual_char):
+                self.markFailure()
+                self.readFromActual()
+        elif EvaluationStream.isnewline(self._actual_char):  # Resync expected stream to the next newline
+            while not EvaluationStream.isnewline(self._expected_char) and not EvaluationStream.iseof(self._expected_char):
+                self.markFailure()
+                self.readFromExpected()
+        elif EvaluationStream.isspace(self._actual_char) and self._expected_char == self._actual.peek(1):  # ignore whitespace if the next char matches
+            self.markFailure()
+            self._expected.push_back(self._expected_char)
+        else:
+            mark_failure_position = self._actual.location()
+            self.resyncActual()
+            self.markFailure(mark_failure_position)
 
-    if logger.isEnabledFor(logging.DEBUG):
-      sys.stdout.write("\n")
-      sys.stdout.flush()
+    def handleMatch(self):
+        self.successes[self._expected_char].append({"expected_location":self._expected.location(), "actual_location":self._actual.location()})
+        if not EvaluationStream.isnewline(self._expected_char):
+            if logger.isEnabledFor(logging.DEBUG):
+                sys.stdout.write(".")
+        elif logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write("\n")
 
-    self.count = self._expected.count
-    return self
+    def evaluate(self):
+        """
+        Evaluate the actual ocr results against the expected results and provide metrics on failures.
+        """
 
-  def calculate_percentages(self):
-    keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
-    self.percentages = {}
-    for key in keys:
-      failure_count = len(self.failures[key]) if key in self.failures else 0
-      success_count = len(self.successes[key]) if key in self.successes else 0
-      self.percentages[key] = success_count / float( failure_count + success_count )
+        if logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write("Debug Legend:\n")
+            sys.stdout.write("  . = matched\n")
+            sys.stdout.write("  X = failed\n")
+            sys.stdout.write("  s = skipped\n")
+            sys.stdout.write("  _ = skipped extra whitespace\n")
+            sys.stdout.write("  $ = End of Line (expected or actual)")
+            sys.stdout.write("  E = End of File (expected)\n")
+            sys.stdout.write("  e = End of File (actual)\n")
 
-    values = self.percentages.values()
-    self.percentage_overall = sum(values)/len(values)
+        while True:
+            self.readFromExpected()
+            self.readFromActual()
+            if EvaluationStream.iseof(self._expected_char) and EvaluationStream.iseof(self._actual_char):
+                if self.success == None:
+                    self.success = True
+                break
 
-  def __str__(self):
-    return unicode(self).encode('utf-8')
+            up_to_count = self._expected.count
 
-  def __unicode__(self):
-    result = []
-    result.append(u"success={0!s}".format(self.success))
-    result.append(u"count={0:d}".format(self.count))
-    result.append(u"failures={")
-    for key, value in self.failures.iteritems():
-      result.append(u"  '{0}' = {1},".format(key, unicode(value)))
-    result.append(u"}")
-    result.append(u"successes={")
-    for key, value in self.successes.iteritems():
-      result.append(u"  '{0}' = {1},".format(key, value))
-    result.append(u"}")
-    result.append(u"percentages={")
-    for key, value in self.percentages().iteritems():
-      result.append(u"  '{0}' = {1},".format(key, value))
-    result.append(u"}")
-    result.append(u"overall={0}".format(self.overall()))
-    return u"\n".join(result)
+            if self._expected_char != self._actual_char:
+                self.handleMismatch()
+            else:
+                self.handleMatch()
 
-  def summary(self):
-    result = []
-    result.append(u"success={0!s}".format(self.success))
-    result.append(u"count={0:d}".format(self.count))
-    result.append(u"overall={0}".format(self.percentage_overall))
-    return u"\n".join(result)
+            if EvaluationStream.iseof(self._expected_char):
+                self.success = False
+                break
+
+        if logger.isEnabledFor(logging.DEBUG):
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+        self.count = self._expected.count
+        return self
+
+    def calculate_percentages(self):
+        keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
+        self.percentages = {}
+        for key in keys:
+            failure_count = len(self.failures[key]) if key in self.failures else 0
+            success_count = len(self.successes[key]) if key in self.successes else 0
+            self.percentages[key] = success_count / float(failure_count + success_count)
+
+        values = self.percentages.values()
+        self.percentage_overall = sum(values) / len(values)
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
+        result = []
+        result.append(u"success={0!s}".format(self.success))
+        result.append(u"count={0:d}".format(self.count))
+        result.append(u"failures={")
+        for key, value in self.failures.iteritems():
+            result.append(u"  '{0}' = {1},".format(key, unicode(value)))
+        result.append(u"}")
+        result.append(u"successes={")
+        for key, value in self.successes.iteritems():
+            result.append(u"  '{0}' = {1},".format(key, value))
+        result.append(u"}")
+        result.append(u"percentages={")
+        for key, value in self.percentages().iteritems():
+            result.append(u"  '{0}' = {1},".format(key, value))
+        result.append(u"}")
+        result.append(u"overall={0}".format(self.overall()))
+        return u"\n".join(result)
+
+    def summary(self):
+        result = []
+        result.append(u"success={0!s}".format(self.success))
+        result.append(u"count={0:d}".format(self.count))
+        result.append(u"overall={0}".format(self.percentage_overall))
+        return u"\n".join(result)
 
 class EvaluationStream():
   """
@@ -271,7 +269,7 @@ class EvaluationStream():
     char = self._read_stream_or_peek_buffer()
 
     if EvaluationStream.iseof(char):
-      pass # EOF doesn't increment counts
+      pass  # EOF doesn't increment counts
     elif EvaluationStream.isnewline(char):
       self._line += 1
       self._position = 0
@@ -293,7 +291,7 @@ class EvaluationStream():
     chars_needed = n - current_peek_chars_available
     for _ in range(chars_needed):
       self._peek_buffer.append(self._read_with_translations())
-    result = self._peek_buffer[n-1]
+    result = self._peek_buffer[n - 1]
     return result
 
   def push_back(self, char):
@@ -315,7 +313,7 @@ def main():
   arg.value = parser.parse_args()
   correct_file = arg.string_value("correct_file", default_value="correct.txt")
   input_file = arg.string_value("input_file")
-  results_file = arg.string_value("results_file", default_value=input_file+"-results.txt")
+  results_file = arg.string_value("results_file", default_value=input_file + "-results.txt")
   if arg.boolean_value("debug") or arg.boolean_value("trace"):
     logging.getLogger().setLevel(logging.DEBUG)
   if arg.boolean_value("trace"):
