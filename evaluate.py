@@ -239,7 +239,7 @@ class Evaluation:
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-        self.count = self._expected.count
+        self.count = self._actual.count
 
         self._calculate_percentages()
         return self

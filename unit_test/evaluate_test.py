@@ -77,7 +77,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 1
+        assert result.count == 2
         assert result.failures == {u"EOF": [{"actual": u"し", "actual_location": "2:1", "expected_location": "2:0"}]}
 
     def test_endoffile_mismatch_more_in_expected(self):
@@ -86,7 +86,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 2
+        assert result.count == 1
         assert result.failures == { u"し": [{"actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] }
 
     def test_mismatch_prior_to_newline(self):
@@ -131,7 +131,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 3
+        assert result.count == 4
         assert result.failures == {u"い": [{ "actual": u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_out_of_sync_stream_two_deep(self):
@@ -140,7 +140,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 3
+        assert result.count == 5
         assert result.failures == {u"い": [{"actual": u"ぃ　'", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_out_of_sync_stream_actual_new_lined_early(self):
@@ -149,7 +149,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 9
+        assert result.count == 6
         assert result.failures == {
                                    u"む" : [{"actual": u"NL", "actual_location": "2:0", "expected_location": "1:4"}],
                                    u"す" : [{"actual": u"NL", "actual_location": "2:0", "expected_location": "1:5"}],
@@ -162,7 +162,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 6
+        assert result.count == 9
         assert result.failures == {u"NL": [{"actual": u"む", "actual_location": "1:4", "expected_location": "2:0"},
                                            {"actual": u"す", "actual_location": "1:5", "expected_location": "2:0"},
                                            {"actual": u"こ", "actual_location": "1:6", "expected_location": "2:0"}]
@@ -174,7 +174,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 9
+        assert result.count == 10
         assert result.failures == {
                                    u"こ": [{"actual": u"あ", "actual_location": "1:6", "expected_location": "1:6"}],
                                    u"し": [{"actual": u"こし", "actual_location": "2:1", "expected_location": "2:1"}]
@@ -206,7 +206,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 6
+        assert result.count == 7
         assert result.failures == {
                                    u"い": [{"actual": u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}],
                                    u"る": [{"actual": u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
@@ -234,7 +234,7 @@ class TestEvaluate:
         result = Evaluation(expected,actual)
         result.evaluate()
         assert result.success == False
-        assert result.count == 9
+        assert result.count == 14
         json.dump(result.failures, sys.stdout, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '))
         assert result.failures == {
                                    u"し": [{"actual": u" ", "actual_location": "1:2", "expected_location": "1:2"}],
