@@ -2,8 +2,9 @@
 
 import io
 import json
-from evaluate import Evaluation, EvaluationStream, IgnoreUnderscoreEncoder
 import sys
+
+from evaluate import Evaluation, EvaluationStream, IgnoreUnderscoreEncoder
 
 class TestEvaluate:
 

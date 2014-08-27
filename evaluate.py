@@ -9,14 +9,15 @@ Email: baerrach@gmail.com
 DATE: 13th Aug 2014
 """
 
+import argparse
 import codecs
 import collections
-import argparse
-import arg
-import sys
-import os
 import json
 import logging
+import os
+import sys
+
+import arg
 
 logger = logging.getLogger(__name__)
 trace = logging.getLogger("trace")
