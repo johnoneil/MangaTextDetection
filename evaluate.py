@@ -204,145 +204,145 @@ class Evaluation:
         return u"\n".join(result)
 
 class EvaluationStream():
-  """
-  Wrap an io.TextIOBase to provide Evaluation support.
-
-  :param stream: io.TextIOBase of the actual ocr results
-  """
-
-  _newline = u"NL"
-  _eof = u"EOF"
-
-  @staticmethod
-  def isnewline(char):
-    return EvaluationStream._newline == char
-
-  @staticmethod
-  def iseof(char):
-    return EvaluationStream._eof == char
-
-  @staticmethod
-  def isspace(char):
-    return u" " == char
-
-  def __init__(self, stream):
-    self._stream = stream
-    self._line = 1
-    self._position = 0
-    self.count = 0
-    self._peek_buffer = collections.deque()
-
-  def _read_with_translations(self):
     """
-    As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
-    \n is rewritten as NL so that mismatches are printable characters.
-    end of file is rewritten as EOF for printability.
-    """
-    char = self._stream.read(1)
-    while u"\r" == char:
-      char = self._stream.read(1)
+    Wrap an io.TextIOBase to provide Evaluation support.
 
-    if u"" == char:
-      char = EvaluationStream._eof
-    elif u"\n" == char:
-      char = EvaluationStream._newline
-
-    return char
-
-  def _read_stream_or_peek_buffer(self):
-    if self._peek_buffer:
-      char = self._peek_buffer.popleft()
-    else:
-      char = self._read_with_translations()
-
-    return char
-
-  def read(self):
-    """
-    As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
-    \n is rewritten as NL so that mismatches are printable characters.
-    end of file is rewritten as EOF for printability.
-
-    To support peek, an internal buffer is used and read from before re-reading from stream.
+    :param stream: io.TextIOBase of the actual ocr results
     """
 
-    char = self._read_stream_or_peek_buffer()
+    _newline = u"NL"
+    _eof = u"EOF"
 
-    if EvaluationStream.iseof(char):
-      pass  # EOF doesn't increment counts
-    elif EvaluationStream.isnewline(char):
-      self._line += 1
-      self._position = 0
-    else:
-      self._position += 1
-      self.count += 1
+    @staticmethod
+    def isnewline(char):
+        return EvaluationStream._newline == char
 
-    return char
+    @staticmethod
+    def iseof(char):
+        return EvaluationStream._eof == char
 
-  def location(self):
-    return u"{0:d}:{1:d}".format(self._line, self._position)
+    @staticmethod
+    def isspace(char):
+        return u" " == char
 
-  def peek(self, n):
-    """
-    Peek ahead n characters in the input stream and return that character
-    """
+    def __init__(self, stream):
+        self._stream = stream
+        self._line = 1
+        self._position = 0
+        self.count = 0
+        self._peek_buffer = collections.deque()
 
-    current_peek_chars_available = len(self._peek_buffer)
-    chars_needed = n - current_peek_chars_available
-    for _ in range(chars_needed):
-      self._peek_buffer.append(self._read_with_translations())
-    result = self._peek_buffer[n - 1]
-    return result
+    def _read_with_translations(self):
+        """
+        As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
+        \n is rewritten as NL so that mismatches are printable characters.
+        end of file is rewritten as EOF for printability.
+        """
+        char = self._stream.read(1)
+        while u"\r" == char:
+            char = self._stream.read(1)
 
-  def push_back(self, char):
-    assert not EvaluationStream.iseof(char)
-    assert not EvaluationStream.isnewline(char)
-    self._position -= 1
-    self.count -= 1
+        if u"" == char:
+            char = EvaluationStream._eof
+        elif u"\n" == char:
+            char = EvaluationStream._newline
 
-    self._peek_buffer.appendleft(char)
+        return char
+
+    def _read_stream_or_peek_buffer(self):
+        if self._peek_buffer:
+            char = self._peek_buffer.popleft()
+        else:
+            char = self._read_with_translations()
+
+        return char
+
+    def read(self):
+        """
+        As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
+        \n is rewritten as NL so that mismatches are printable characters.
+        end of file is rewritten as EOF for printability.
+
+        To support peek, an internal buffer is used and read from before re-reading from stream.
+        """
+
+        char = self._read_stream_or_peek_buffer()
+
+        if EvaluationStream.iseof(char):
+            pass    # EOF doesn't increment counts
+        elif EvaluationStream.isnewline(char):
+            self._line += 1
+            self._position = 0
+        else:
+            self._position += 1
+            self.count += 1
+
+        return char
+
+    def location(self):
+        return u"{0:d}:{1:d}".format(self._line, self._position)
+
+    def peek(self, n):
+        """
+        Peek ahead n characters in the input stream and return that character
+        """
+
+        current_peek_chars_available = len(self._peek_buffer)
+        chars_needed = n - current_peek_chars_available
+        for _ in range(chars_needed):
+            self._peek_buffer.append(self._read_with_translations())
+        result = self._peek_buffer[n - 1]
+        return result
+
+    def push_back(self, char):
+        assert not EvaluationStream.iseof(char)
+        assert not EvaluationStream.isnewline(char)
+        self._position -= 1
+        self.count -= 1
+
+        self._peek_buffer.appendleft(char)
 
 def main():
-  parser = argparse.ArgumentParser(description="Evaluate text against correct version.")
-  parser.add_argument("-c", "--correct", dest="correct_file", help="File containing the correct text")
-  parser.add_argument("-i", "--input", dest="input_file", required=True, help="File containing the text to compare against the correct version")
-  parser.add_argument("-r", "--results", dest="results_file", help="File to write evaluation results to")
-  parser.add_argument("-d", "--debug", action="store_true", help="Enable debug tracing")
-  parser.add_argument("-t", "--trace", action="store_true", help="Print out mismatches as they occur. Also enables debug")
+    parser = argparse.ArgumentParser(description="Evaluate text against correct version.")
+    parser.add_argument("-c", "--correct", dest="correct_file", help="File containing the correct text")
+    parser.add_argument("-i", "--input", dest="input_file", required=True, help="File containing the text to compare against the correct version")
+    parser.add_argument("-r", "--results", dest="results_file", help="File to write evaluation results to")
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug tracing")
+    parser.add_argument("-t", "--trace", action="store_true", help="Print out mismatches as they occur. Also enables debug")
 
-  arg.value = parser.parse_args()
-  correct_file = arg.string_value("correct_file", default_value="correct.txt")
-  input_file = arg.string_value("input_file")
-  results_file = arg.string_value("results_file", default_value=input_file + "-results.txt")
-  if arg.boolean_value("debug") or arg.boolean_value("trace"):
-    logging.getLogger().setLevel(logging.DEBUG)
-  if arg.boolean_value("trace"):
-    trace.setLevel(logging.DEBUG)
+    arg.value = parser.parse_args()
+    correct_file = arg.string_value("correct_file", default_value="correct.txt")
+    input_file = arg.string_value("input_file")
+    results_file = arg.string_value("results_file", default_value=input_file + "-results.txt")
+    if arg.boolean_value("debug") or arg.boolean_value("trace"):
+        logging.getLogger().setLevel(logging.DEBUG)
+    if arg.boolean_value("trace"):
+        trace.setLevel(logging.DEBUG)
 
-  if not os.path.isfile(input_file):
-    print("Input file '{0}' does not exist. Use -h option for help".format(input_file))
-    sys.exit(-1)
+    if not os.path.isfile(input_file):
+        print("Input file '{0}' does not exist. Use -h option for help".format(input_file))
+        sys.exit(-1)
 
-  if not os.path.isfile(correct_file):
-    print("Correct file '{0}' does not exist. Use -h option for help".format(correct_file))
-    sys.exit(-1)
+    if not os.path.isfile(correct_file):
+        print("Correct file '{0}' does not exist. Use -h option for help".format(correct_file))
+        sys.exit(-1)
 
-  with codecs.open(correct_file, "rU", "utf-8") as c, codecs.open(input_file, "rU", "utf-8") as i:
-    result = Evaluation(c, i)
-    result.evaluate()
-    result.calculate_percentages()
+    with codecs.open(correct_file, "rU", "utf-8") as c, codecs.open(input_file, "rU", "utf-8") as i:
+        result = Evaluation(c, i)
+        result.evaluate()
+        result.calculate_percentages()
 
-  with codecs.open(results_file, "wU", "utf-8") as w:
-    json.dump(result, w, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True)
+    with codecs.open(results_file, "wU", "utf-8") as w:
+        json.dump(result, w, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True)
 
-  print(u"Summary of evaluation results:")
-  print(u"results={0}".format(results_file))
-  print(result.summary())
+    print(u"Summary of evaluation results:")
+    print(u"results={0}".format(results_file))
+    print(result.summary())
 
 
 if __name__ == "__main__":
-  logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
-  UTF8Writer = codecs.getwriter('utf8')
-  sys.stdout = UTF8Writer(sys.stdout)
-  main()
+    UTF8Writer = codecs.getwriter('utf8')
+    sys.stdout = UTF8Writer(sys.stdout)
+    main()
