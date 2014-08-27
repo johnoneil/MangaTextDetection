@@ -3,7 +3,7 @@
 
 """
 Module: evaluate.py
-Desc: Evaluate the ocr esults against the expected output and provide metrics on failures
+Desc: Evaluate the ocr results against the expected output and provide metrics on failures
 Author: Barrie Treloar
 Email: baerrach@gmail.com
 DATE: 13th Aug 2014
@@ -23,6 +23,14 @@ trace = logging.getLogger("trace")
 trace.setLevel(logging.INFO)
 
 class IgnoreUnderscoreEncoder(json.JSONEncoder):
+
+    """
+    This JSON Encoder ignores any keys that start with an underscore.
+
+    Python uses underscore to indicate a private field. This JSON Encoder will ignore these
+    private fields and return the public version of the data.
+    """
+
     def default(self, obj):
         attributes = {}
         obj_dict = obj.__dict__
@@ -33,7 +41,43 @@ class IgnoreUnderscoreEncoder(json.JSONEncoder):
         return attributes
 
 class Evaluation:
+
+    u"""
+    Evaluation takes an expected stream and an actual stream and evaluates them to determine how closely they match.
+
+    self.success = True if they match completely, false otherwise.
+    self.count = The count of the characters read from the actual stream
+    self.failures = A dictionary of the failures, keyed by the failed character.
+                    The value is a list of dictionaries that describe the failure locations.
+                    e.g.
+                    {
+                     u"い": [{"actual": u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}],
+                     u"る": [{"actual": u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
+                     }
+    self.successes = A dictionary of the successes, keyed by the success character.
+                     The value is a list of dictionaries that describe the success locations.
+                     e.g.
+                     {
+                      u"あ": [{'actual_location': '1:3', 'expected_location': '1:2'}],
+                      u"し": [{'actual_location': '1:4', 'expected_location': '1:3'}]
+                      }
+    self.percentages = A dictionary of characters and their percentages of successful matches.
+    self.percentages_overall = A percentage of the successes over the entire stream.
+    """
+
     def __init__(self, expected_stream, actual_stream):
+        """
+        Setup the Evaluation state to evaluate the two provided streams.
+
+        Internally the streams are wrapped in EvaluationStream objects to provide additional features needed
+        to track the stream; line and column positions, universal newline handling, peeking.
+
+        :param expected_stream: Contains the expected text
+        :type expected_stream: io.TextIOBase
+        :param actual_stream: Contains the actual text
+        :type actual_stream: io.TextIOBase
+        """
+
         self.success = None
         self.count = 0
         self.failures = collections.defaultdict(list)
@@ -47,12 +91,20 @@ class Evaluation:
         self._max_peek_lookahead = 3
 
     def readFromExpected(self):
+        """Read from the expected stream and store the character read"""
         self._expected_char = self._expected.read()
 
     def readFromActual(self):
+        """Read from the actual stream and store the character read"""
         self._actual_char = self._actual.read()
 
     def markFailure(self, actual_location=None):
+        """
+        Mark the current character as a failure.
+
+        :param actual_location: The location where the failure occurred. If not provided the current location of the actual stream is used.
+        """
+
         if not actual_location:
             actual_location = self._actual.location()
         failure_details = {u"actual":self._actual_char, u"actual_location":actual_location, u"expected_location":self._expected.location()}
@@ -75,8 +127,17 @@ class Evaluation:
     def resyncActual(self):
         """
         Lookahead on the stream to see if re-syncing is required.
-        If re-syncing is required then the extra characters will be consumed and appended to self._actual_char
+        If re-syncing is required then the extra characters will be consumed and appended to self._actual_char.
+        If characters are consumed then then position in the stream will also change. If you need to know the original
+        position prior to resyncing then store the location prior to invoking this method.
+
+        TODO: Add confidence by continuing past the resync point and determining how many characters still match.
+              Note: For Japanese this isn't so useful since a kanji is an entire word and OCR may be failing
+              on every other character and reducing confidence.
+
+        TODO: Resync should stop at newlines. Tests indicate that this is not currently a problem.
         """
+
         sync_to_char = self._expected.peek(1)
 
         if EvaluationStream.iseof(sync_to_char):
@@ -95,8 +156,21 @@ class Evaluation:
                 resync_found_ahead_at -= 1
                 self._actual_char += self._actual.read()
 
-
     def handleMismatch(self):
+        """
+        Handle a mismatch of the streams.
+
+        This will mark the self.success as False indicating that the evaulation was not successful.
+
+        If a newline is encountered on either stream then the other stream is consumed until a newline is found
+        or the end of file is reached.
+
+        If actual char is a space then peek ahead to see if that character matches what was expected.
+        The space is marked as a failure and the expected char pushed back onto the stream to get back in sync.
+
+        Otherwise the actual location is marked and a resync is attemped before marking the failure.
+        """
+
         self.success = False
         if EvaluationStream.isnewline(self._expected_char):  # Resync actual stream to the next newline
             while not EvaluationStream.isnewline(self._actual_char) and not EvaluationStream.iseof(self._actual_char):
@@ -115,6 +189,10 @@ class Evaluation:
             self.markFailure(mark_failure_position)
 
     def handleMatch(self):
+        """
+        Handle a match of the streams.
+        """
+
         self.successes[self._expected_char].append({"expected_location":self._expected.location(), "actual_location":self._actual.location()})
         if not EvaluationStream.isnewline(self._expected_char):
             if logger.isEnabledFor(logging.DEBUG):
@@ -166,6 +244,10 @@ class Evaluation:
         return self
 
     def _calculate_percentages(self):
+        """
+        Calculate the percentages of successes to failures.
+        """
+
         keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
         self.percentages = {}
         for key in keys:
@@ -200,17 +282,23 @@ class Evaluation:
         return u"\n".join(result)
 
     def summary(self):
+        """
+        Provide a summary version of __unicode__
+        """
+
         result = []
         result.append(u"success={0!s}".format(self.success))
         result.append(u"count={0:d}".format(self.count))
         result.append(u"overall={0}".format(self.percentage_overall))
         return u"\n".join(result)
 
+
 class EvaluationStream():
+
     """
     Wrap an io.TextIOBase to provide Evaluation support.
 
-    :param stream: io.TextIOBase of the actual ocr results
+    self.count = How many characters have been read from the stream.
     """
 
     _newline = u"NL"
@@ -218,14 +306,17 @@ class EvaluationStream():
 
     @staticmethod
     def isnewline(char):
+        """Check whether the char is a newline"""
         return EvaluationStream._newline == char
 
     @staticmethod
     def iseof(char):
+        """Check whether the char is the end of file"""
         return EvaluationStream._eof == char
 
     @staticmethod
     def isspace(char):
+        """Check whether the character is a space"""
         return u" " == char
 
     def __init__(self, stream):
@@ -240,7 +331,10 @@ class EvaluationStream():
         As per io.TextIOBase.read(1), but also ignore windows \r characters by reading the next character.
         \n is rewritten as NL so that mismatches are printable characters.
         end of file is rewritten as EOF for printability.
+
+        Use self._read_stream_or_peek_buffer instead of this function directly.
         """
+
         char = self._stream.read(1)
         while u"\r" == char:
             char = self._stream.read(1)
@@ -253,6 +347,10 @@ class EvaluationStream():
         return char
 
     def _read_stream_or_peek_buffer(self):
+        """
+        Reads a character from the peek buffer, if there is anything on it, or else directly fron the stream.
+        """
+
         if self._peek_buffer:
             char = self._peek_buffer.popleft()
         else:
@@ -267,6 +365,8 @@ class EvaluationStream():
         end of file is rewritten as EOF for printability.
 
         To support peek, an internal buffer is used and read from before re-reading from stream.
+
+        Internal counters are incrememented to track the current line and position, see self.location()
         """
 
         char = self._read_stream_or_peek_buffer()
@@ -283,6 +383,7 @@ class EvaluationStream():
         return char
 
     def location(self):
+        """Return a string description of the streams location, in the form of <line>:<position>"""
         return u"{0:d}:{1:d}".format(self._line, self._position)
 
     def peek(self, n):
@@ -298,6 +399,11 @@ class EvaluationStream():
         return result
 
     def push_back(self, char):
+        """
+        Push the provided character back onto the head of the stream.
+
+        Newline and EOF are not supported.
+        """
         assert not EvaluationStream.iseof(char)
         assert not EvaluationStream.isnewline(char)
         self._position -= 1
