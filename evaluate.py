@@ -161,9 +161,11 @@ class Evaluation:
             sys.stdout.flush()
 
         self.count = self._expected.count
+
+        self._calculate_percentages()
         return self
 
-    def calculate_percentages(self):
+    def _calculate_percentages(self):
         keys = set(self.successes.iterkeys()).union(self.failures.iterkeys())
         self.percentages = {}
         for key in keys:
@@ -172,7 +174,8 @@ class Evaluation:
             self.percentages[key] = success_count / float(failure_count + success_count)
 
         values = self.percentages.values()
-        self.percentage_overall = sum(values) / len(values)
+        if values:
+            self.percentage_overall = sum(values) / len(values)
 
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -330,7 +333,6 @@ def main():
     with codecs.open(correct_file, "rU", "utf-8") as c, codecs.open(input_file, "rU", "utf-8") as i:
         result = Evaluation(c, i)
         result.evaluate()
-        result.calculate_percentages()
 
     with codecs.open(results_file, "wU", "utf-8") as w:
         json.dump(result, w, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '), sort_keys=True)
