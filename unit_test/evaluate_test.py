@@ -217,7 +217,6 @@ class TestEvaluate:
                                     u"る": [{'actual_location': '1:7', 'expected_location': '1:6'}],
                                     u"NL": [{'actual_location': '2:0', 'expected_location': '2:0'}]
                                     }
-        print result.percentages
         assert result.percentages == {
                                       u"あ": 1.0,
                                       u"い": 0.0,
