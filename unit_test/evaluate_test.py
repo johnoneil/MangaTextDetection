@@ -32,7 +32,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 1
-        assert result.failures == { u"し" : [{ "actual" : u"あ", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"し": [{"actual": u"あ", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_newline_unix_does_not_increase_count(self):
         actual = io.StringIO(u"\n")
@@ -68,7 +68,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 1
-        assert result.failures == { u"し" : [{ "actual" : u"あ", "actual_location": "2:1", "expected_location": "2:1"}] }
+        assert result.failures == {u"し": [{"actual": u"あ", "actual_location": "2:1", "expected_location": "2:1"}]}
 
     def test_endoffile_mismatch_more_in_actual(self):
         actual = io.StringIO(u"あ\r\nし")
@@ -77,7 +77,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 1
-        assert result.failures == { u"EOF" : [{ "actual" : u"し", "actual_location": "2:1", "expected_location": "2:0"}] }
+        assert result.failures == {u"EOF": [{"actual": u"し", "actual_location": "2:1", "expected_location": "2:0"}]}
 
     def test_endoffile_mismatch_more_in_expected(self):
         actual = io.StringIO(u"あ\r\n")
@@ -86,7 +86,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 2
-        assert result.failures == { u"し" : [{ "actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] }
+        assert result.failures == { u"し": [{"actual" : u"EOF", "actual_location": "2:0", "expected_location": "2:1"}] }
 
     def test_mismatch_prior_to_newline(self):
         actual = io.StringIO(u"\"\nいあ")
@@ -95,7 +95,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"。": [{"actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_mismatch_prior_to_newline_windows(self):
         actual = io.StringIO(u"\"\r\nいあ")
@@ -104,7 +104,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"。": [{"actual": u"\"", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_mismatch_prior_to_newline_followed_by_another_newline(self):
         actual = io.StringIO(u"\"\n\nいあ")
@@ -113,7 +113,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"。": [{"actual": u"\"", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_mismatch_prior_to_newline_followed_by_another_newline_windows(self):
         actual = io.StringIO(u"\"\r\n\r\nいあ")
@@ -122,7 +122,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"。" : [{ "actual" : u"\"", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"。": [{"actual": u"\"", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_out_of_sync_stream(self):
         actual = io.StringIO(u"ぃ　あし\r\n")
@@ -131,7 +131,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"い": [{ "actual": u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_out_of_sync_stream_two_deep(self):
         actual = io.StringIO(u"ぃ　'あし\r\n")
@@ -140,7 +140,7 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 3
-        assert result.failures == { u"い" : [{ "actual" : u"ぃ　'", "actual_location": "1:1", "expected_location": "1:1"}] }
+        assert result.failures == {u"い": [{"actual": u"ぃ　'", "actual_location": "1:1", "expected_location": "1:1"}]}
 
     def test_out_of_sync_stream_actual_new_lined_early(self):
         actual = io.StringIO(u"新しい\nしごと")
@@ -149,10 +149,11 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 9
-        assert result.failures == { u"む" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:4"}],
-                                    u"す" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:5"}],
-                                    u"こ" : [{ "actual" : u"NL", "actual_location": "2:0", "expected_location": "1:6"}],
-                                    }
+        assert result.failures == {
+                                   u"む" : [{"actual": u"NL", "actual_location": "2:0", "expected_location": "1:4"}],
+                                   u"す" : [{"actual": u"NL", "actual_location": "2:0", "expected_location": "1:5"}],
+                                   u"こ" : [{"actual": u"NL", "actual_location": "2:0", "expected_location": "1:6"}],
+                                   }
 
     def test_out_of_sync_stream_expected_new_lined_early(self):
         actual = io.StringIO(u"新しいむすこ\nしごと\n")
@@ -161,9 +162,9 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 6
-        assert result.failures == { u"NL" : [{ "actual" : u"む", "actual_location": "1:4", "expected_location": "2:0"},
-                                             { "actual" : u"す", "actual_location": "1:5", "expected_location": "2:0"},
-                                             { "actual" : u"こ", "actual_location": "1:6", "expected_location": "2:0"}]
+        assert result.failures == {u"NL": [{"actual": u"む", "actual_location": "1:4", "expected_location": "2:0"},
+                                           {"actual": u"す", "actual_location": "1:5", "expected_location": "2:0"},
+                                           {"actual": u"こ", "actual_location": "1:6", "expected_location": "2:0"}]
                                    }
 
     def test_out_of_sync_stream_doesnt_sync_past_newline(self):
@@ -173,9 +174,10 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 9
-        assert result.failures == { u"こ" : [{ "actual" : u"あ", "actual_location": "1:6", "expected_location": "1:6"}],
-                                    u"し" : [{ "actual" : u"こし", "actual_location": "2:1", "expected_location": "2:1"}]
-                                    }
+        assert result.failures == {
+                                   u"こ": [{"actual": u"あ", "actual_location": "1:6", "expected_location": "1:6"}],
+                                   u"し": [{"actual": u"こし", "actual_location": "2:1", "expected_location": "2:1"}]
+                                   }
 
     def test_peek_when_empty(self):
         stream = io.StringIO()
@@ -204,24 +206,25 @@ class TestEvaluate:
         result.evaluate()
         assert result.success == False
         assert result.count == 6
-        assert result.failures == { u"い" : [{ "actual" : u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}],
-                                    u"る" : [{ "actual" : u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
-                                    }
+        assert result.failures == {
+                                   u"い": [{"actual": u"ぃ　", "actual_location": "1:1", "expected_location": "1:1"}],
+                                   u"る": [{"actual": u"ろ", "actual_location" : "1:5", "expected_location": "1:4"}]
+                                   }
         assert result.successes == {
-                                    u"あ" : [{'actual_location': '1:3', 'expected_location': '1:2'}],
-                                    u"し" : [{'actual_location': '1:4', 'expected_location': '1:3'}],
-                                    u"ろ" : [{'actual_location': '1:6', 'expected_location': '1:5'}],
-                                    u"る" : [{'actual_location': '1:7', 'expected_location': '1:6'}],
-                                    u"NL" : [{'actual_location': '2:0', 'expected_location': '2:0'}]
+                                    u"あ": [{'actual_location': '1:3', 'expected_location': '1:2'}],
+                                    u"し": [{'actual_location': '1:4', 'expected_location': '1:3'}],
+                                    u"ろ": [{'actual_location': '1:6', 'expected_location': '1:5'}],
+                                    u"る": [{'actual_location': '1:7', 'expected_location': '1:6'}],
+                                    u"NL": [{'actual_location': '2:0', 'expected_location': '2:0'}]
                                     }
         print result.percentages
         assert result.percentages == {
-                                      u"あ" : 1.0,
-                                      u"い" : 0.0,
-                                      u"し" : 1.0,
-                                      u"る" : 0.5,
-                                      u"ろ" : 1.0,
-                                      u"NL" : 1.0
+                                      u"あ": 1.0,
+                                      u"い": 0.0,
+                                      u"し": 1.0,
+                                      u"る": 0.5,
+                                      u"ろ": 1.0,
+                                      u"NL": 1.0
                                       }
         assert result.percentage_overall == 0.75
 
@@ -233,9 +236,10 @@ class TestEvaluate:
         assert result.success == False
         assert result.count == 9
         json.dump(result.failures, sys.stdout, cls=IgnoreUnderscoreEncoder, ensure_ascii=False, indent=2, separators=(',', ': '))
-        assert result.failures == { u"し" : [{ "actual" : u" ", "actual_location": "1:2", "expected_location": "1:2"}],
-                                    u"い" : [{ "actual" : u" ", "actual_location": "1:4", "expected_location": "1:3"}],
-                                    u"む" : [{ "actual" : u" ", "actual_location": "1:6", "expected_location": "1:4"}],
-                                    u"ご" : [{ "actual" : u" ", "actual_location": "2:2", "expected_location": "2:2"}],
-                                    u"と" : [{ "actual" : u" ", "actual_location": "2:4", "expected_location": "2:3"}],
-                                    }
+        assert result.failures == {
+                                   u"し": [{"actual": u" ", "actual_location": "1:2", "expected_location": "1:2"}],
+                                   u"い": [{"actual": u" ", "actual_location": "1:4", "expected_location": "1:3"}],
+                                   u"む": [{"actual": u" ", "actual_location": "1:6", "expected_location": "1:4"}],
+                                   u"ご": [{"actual": u" ", "actual_location": "2:2", "expected_location": "2:2"}],
+                                   u"と": [{"actual": u" ", "actual_location": "2:4", "expected_location": "2:3"}],
+                                   }
