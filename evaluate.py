@@ -185,9 +185,9 @@ class Evaluation:
             self.markFailure()
             self._expected.push_back(self._expected_char)
         else:
-            mark_failure_position = self._actual.location()
+            mark_failure_location = self._actual.location()
             self.resyncActual()
-            self.markFailure(mark_failure_position)
+            self.markFailure(mark_failure_location)
 
     def handleMatch(self):
         """
