@@ -217,6 +217,7 @@ class TestEvaluate:
         result.calculate_percentages()
         print result.percentages
         assert result.percentages == {
+                                      u"あ" : 1.0,
                                       u"い" : 0.0,
                                       u"し" : 1.0,
                                       u"る" : 0.5,
