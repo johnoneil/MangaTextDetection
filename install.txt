@@ -1,0 +1,14 @@
+appdirs==1.4.0
+Cython==0.25.2
+numpy==1.12.0
+olefile==0.44
+opencv-python==3.2.0.6
+packaging==16.8
+Pillow==4.0.0
+pylabels==1.2.1
+pyparsing==2.1.10
+pyreport==0.3.3
+scipy==0.18.1
+six==1.10.0
+stsci.ndimage==0.10.0
+Wand==0.4.4
