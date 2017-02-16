@@ -27,7 +27,7 @@ import os
 import scipy.ndimage
 from pylab import zeros,amax,median
 
-import tesseract
+#import tesseract
 
 class Blurb(object):
   def __init__(self, x, y, w, h, text, confidence=100.0):
@@ -105,7 +105,7 @@ def segment_into_lines(img,component, min_segment_threshold=1):
   #also we will give possible vertical text runs preference as they're more common
   #if len(vertical)<2 and len(horizontal)<2:continue
   return (aspect, vertical, horizontal)
-
+"""
 def ocr_on_bounding_boxes(img, components):
 
   blurbs = []
@@ -178,6 +178,7 @@ def ocr_on_bounding_boxes(img, components):
         blurbs.append(blurb)
     '''
   return blurbs
+"""
 
 def main():
   parser = arg.parser
