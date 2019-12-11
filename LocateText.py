@@ -9,7 +9,7 @@ DATE: Saturday, Sept 14th 2013
 
   Setment raw manga scan and output image
   with text areas outlined in red.
-  
+
 """
 #import clean_page as clean
 import connected_components as cc
@@ -53,14 +53,14 @@ if __name__ == '__main__':
   outfile = arg.string_value('outfile',default_value=infile + '.text_areas.png')
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
   img = cv2.imread(infile)
   gray = clean.grayscale(img)
 
   binary_threshold=arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'Binarizing with threshold value of ' + str(binary_threshold)
+    print('Binarizing with threshold value of ' + str(binary_threshold))
   inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
   binary = clean.binarize(gray, threshold=binary_threshold)
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
   cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
 
   imsave(outfile, img)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('segmented_image',segmented_image)
 

@@ -10,8 +10,8 @@ DATE: Sunday, Sept 1st 2013
   Furigana is a major difficutly in running OCR
   on low resolution manga scans. This scipt attempts
   to estimate furigana sections of given (pre segmented)
-  text areas. 
-  
+  text areas.
+
 """
 
 import numpy as np
@@ -55,7 +55,7 @@ def find_cc_to_left(component, components, max_dist=20):
   (c_col, c_row) = cc_center(component)
   left_col = c_col-int(max_dist)
   if left_col<0:left_col=0
-  for col in reversed(range(left_col,c_col)):
+  for col in reversed(range(int(left_col),int(c_col))):
     c = intersects_other_component(c_row, col, component, components)
     if c is not None:
       #print 'got hit from center ' + str(c_col) + ','+str(c_row) + 'at ' + str(col) + ',' + str(c_row)
@@ -66,26 +66,26 @@ def estimate_furigana(img, segmentation):
   (w,h)=img.shape[:2]
 
   if arg.boolean_value('verbose'):
-    print 'Estimateding furigana in ' + str(h) + 'x' + str(w) + ' image.'
+    print('Estimateding furigana in ' + str(h) + 'x' + str(w) + ' image.')
 
   text_areas = segmentation
 
   #form binary image from grayscale
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'binarizing images with threshold value of ' + str(binary_threshold)
+    print('binarizing images with threshold value of ' + str(binary_threshold))
   binary = clean.binarize(img,threshold=binary_threshold)
 
   binary_average_size = cc.average_size(binary)
   if arg.boolean_value('verbose'):
-    print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
+    print('average cc size for binaryized grayscale image is ' + str(binary_average_size))
 
   #apply mask and return images
   text_mask = binary_mask(text_areas)
   cleaned = cv2.bitwise_not(text_mask*binary)
   cleaned_average_size = cc.average_size(cleaned)
   if arg.boolean_value('verbose'):
-    print 'average cc size for cleaned, binaryized grayscale image is ' + str(cleaned_average_size)
+    print('average cc size for cleaned, binaryized grayscale image is ' + str(cleaned_average_size))
 
   columns = scipy.ndimage.filters.gaussian_filter(cleaned,(defaults.FURIGANA_VERTICAL_SIGMA_MULTIPLIER*binary_average_size,defaults.FURIGANA_HORIZONTAL_SIGMA_MULTIPLIER*binary_average_size))
   columns = clean.binarize(columns,threshold=defaults.FURIGANA_BINARY_THRESHOLD)
@@ -151,18 +151,18 @@ def main():
   outfile = arg.string_value('outfile',default_value=infile + '.furigana.png')
 
   if not os.path.isfile(infile) or not os.path.isfile(segmentation_file):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tWith segmentation file ' + segmentation_file
-    print '\tAnd generating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tWith segmentation file ' + segmentation_file)
+    print('\tAnd generating output ' + outfile)
 
   furigana = estimate_furigana_from_files(infile, segmentation_file)
 
   imsave(outfile,furigana)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('Furigana', furigana)
     if cv2.waitKey(0) == 27:
@@ -171,4 +171,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

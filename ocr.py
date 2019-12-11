@@ -9,7 +9,7 @@ DATE: Saturday, August 10th 2013
       Revision: Thursday, August 15th 2013
 
  Run OCR on some text bounding boxes.
-  
+
 """
 #import clean_page as clean
 import connected_components as cc
@@ -27,7 +27,7 @@ import os
 import scipy.ndimage
 from pylab import zeros,amax,median
 
-import tesseract
+import pytesseract
 
 class Blurb(object):
   def __init__(self, x, y, w, h, text, confidence=100.0):
@@ -128,7 +128,7 @@ def ocr_on_bounding_boxes(img, components):
       segment_segcost_rating 	F 	Incorporate segmentation cost in word rating?
       enable_new_segsearch 	0 	Enable new segmentation search path.
       language_model_ngram_on 	0 	Turn on/off the use of character ngram model.
-      textord_force_make_prop_words 	F 	Force proportional word segmentation on all rows. 
+      textord_force_make_prop_words 	F 	Force proportional word segmentation on all rows.
     '''
     #now run OCR on this bounding box
     api = tesseract.TessBaseAPI()
@@ -160,7 +160,7 @@ def ocr_on_bounding_boxes(img, components):
     if conf>0 and len(txt)>0:
       blurb = Blurb(x, y, w, h, txt, confidence=conf)
       blurbs.append(blurb)
-    
+
     '''
     for line in non_furigana:
       x=line[1].start
@@ -190,19 +190,19 @@ def main():
   parser.add_argument('--binary_threshold', help='Binarization threshold value from 0 to 255.',type=int,default=defaults.BINARY_THRESHOLD)
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
   parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
-  
+
   arg.value = parser.parse_args()
-  
+
   infile = arg.string_value('infile')
   outfile = arg.string_value('outfile', default_value=infile + '.html')
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tGenerating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tGenerating output ' + outfile)
 
   img = cv2.imread(infile)
   gray = clean.grayscale(img)
@@ -218,9 +218,8 @@ def main():
 
   blurbs = ocr_on_bounding_boxes(binary, components)
   for blurb in blurbs:
-    print str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text
-  
+    print(str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text)
+
 
 if __name__ == '__main__':
   main()
-

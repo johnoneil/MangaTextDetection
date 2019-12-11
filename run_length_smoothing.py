@@ -10,7 +10,7 @@ DATE: Thursday, August 1st 2013
   Experiment to use run length smoothing
   techniques to detect vertical or horizontal
   runs of characters in cleaned manga pages.
-  
+
 """
 
 import numpy as np
@@ -23,8 +23,8 @@ def vertical_run_length_smoothing(img, v_threshold):
   vertical = img.copy()
   (rows,cols)=vertical.shape
   #print "total rows " + str(rows) + " total cols "+ str(cols)
-  for row in xrange(rows):
-    for col in xrange(cols):
+  for row in range(rows):
+    for col in range(cols):
       value = vertical.item(row,col)
       if value == 0:continue
       next_row = row+1
@@ -42,8 +42,8 @@ def horizontal_run_lendth_smoothing(img, h_threshold):
   horizontal = img.copy()
   (rows,cols)=horizontal.shape
   #print "total rows " + str(rows) + " total cols "+ str(cols)
-  for row in xrange(cols):
-    for col in xrange(rows):
+  for row in range(cols):
+    for col in range(rows):
       value = horizontal.item(col,row)
       if value == 0:continue
       #print "row : " + str(row) + " col: " + str(col)
