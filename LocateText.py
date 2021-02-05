@@ -64,7 +64,7 @@ if __name__ == '__main__':
   inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
   binary = clean.binarize(gray, threshold=binary_threshold)
 
-  segmented_image = seg.segment_image(gray)
+  segmented_image = seg.segment_image(inv_binary)
   segmented_image = segmented_image[:,:,2]
   components = cc.get_connected_components(segmented_image)
   cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
