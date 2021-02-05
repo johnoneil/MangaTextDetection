@@ -84,7 +84,7 @@ Dependencies
 -----------------------
 You should be able to install most of the dependencies via pip, or you could use your operating systems package manager (e.g. Mac OS X http://brew.sh/)
 
-### Python 2.7+
+### Python 3+
 
 https://www.python.org/
 
@@ -144,5 +144,5 @@ Install as per OS instructions, then use pip to install the python bindings.
 Don't forget to include your target language's trained data sets.
 
 ```
-pip install python-tesseract
+pip install pytesseract
 ```
