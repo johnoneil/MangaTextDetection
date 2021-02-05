@@ -19,6 +19,7 @@ import matplotlib.cm as cm
 import scipy
 import scipy.ndimage
 import scipy.stats
+import sys
 from pylab import zeros,amax,median
 
 def area_bb(a):
@@ -126,7 +127,7 @@ def main():
   infile = args.infile
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   image = Image.open(infile).convert("L")

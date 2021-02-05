@@ -23,6 +23,7 @@ import scipy
 import scipy.ndimage
 import scipy.stats
 from pylab import zeros,amax,median
+import sys
 
 def area_bb(a):
   #return np.prod([max(x.stop-x.start,0) for x in a[:2]])
@@ -210,7 +211,7 @@ def main():
   infile = args.infile
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   image = Image.open(infile).convert("L")

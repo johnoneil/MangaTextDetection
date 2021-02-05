@@ -18,7 +18,7 @@ import math
 import cv2
 import sys
 import scipy.ndimage
-from scipy.misc import imsave
+from imageio import imwrite
 import run_length_smoothing as rls
 import ocr
 import argparse
@@ -41,17 +41,17 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   (h,w)=img.shape[:2]
 
   if arg.boolean_value('verbose'):
-    print 'Segmenting ' + str(h) + 'x' + str(w) + ' image.'
+    print('Segmenting ' + str(h) + 'x' + str(w) + ' image.')
 
   #create gaussian filtered and unfiltered binary images
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'binarizing images with threshold value of ' + str(binary_threshold)
+    print('binarizing images with threshold value of ' + str(binary_threshold))
   binary = clean.binarize(img,threshold=binary_threshold)
 
   binary_average_size = cc.average_size(binary)
   if arg.boolean_value('verbose'):
-    print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
+    print('average cc size for binaryized grayscale image is ' + str(binary_average_size))
   '''
   The necessary sigma needed for Gaussian filtering (to remove screentones and other noise) seems
   to be a function of the resolution the manga was scanned at (or original page size, I'm not sure).
@@ -65,7 +65,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   sigma = (0.8/676.0)*float(h)-0.9
   sigma = arg.float_value('sigma',default_value=sigma)
   if arg.boolean_value('verbose'):
-    print 'Applying Gaussian filter with sigma (std dev) of ' + str(sigma)
+    print('Applying Gaussian filter with sigma (std dev) of ' + str(sigma))
   gaussian_filtered = scipy.ndimage.gaussian_filter(img, sigma=sigma)
   
   gaussian_binary = clean.binarize(gaussian_filtered,threshold=binary_threshold)
@@ -73,7 +73,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)
   if arg.boolean_value('verbose'):
-    print 'Binarized Gaussian filtered image average cc size: ' + str(average_size)
+    print('Binarized Gaussian filtered image average cc size: ' + str(average_size))
   max_size = average_size*max_scale
   min_size = average_size*min_scale
 
@@ -94,7 +94,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   suppress_furigana = arg.boolean_value('furigana')
   if suppress_furigana:
     if arg.boolean_value('verbose'):
-      print 'Attempting to suppress furigana characters which interfere with OCR.'
+      print('Attempting to suppress furigana characters which interfere with OCR.')
     furigana_mask = furigana.estimate_furigana(cleaned, text_only)
     furigana_mask = np.array(furigana_mask==0,'B')
     cleaned = cv2.bitwise_not(cleaned)*furigana_mask
@@ -103,7 +103,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   
   (text_like_areas, nontext_like_areas) = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
   if arg.boolean_value('verbose'):
-    print '**********there are ' + str(len(text_like_areas)) + ' text like areas total.'
+    print('**********there are ' + str(len(text_like_areas)) + ' text like areas total.')
   text_only = np.zeros(img.shape)
   cc.draw_bounding_boxes(text_only, text_like_areas,color=(255),line_size=-1)
 
@@ -125,8 +125,8 @@ def cleaned2segmented(cleaned, average_size):
   horizontal_smoothing_threshold = defaults.HORIZONTAL_SMOOTHING_MULTIPLIER*average_size
   (h,w)=cleaned.shape[:2]
   if arg.boolean_value('verbose'):
-    print 'Applying run length smoothing with vertical threshold ' + str(vertical_smoothing_threshold) \
-    +' and horizontal threshold ' + str(horizontal_smoothing_threshold)
+    print('Applying run length smoothing with vertical threshold ' + str(vertical_smoothing_threshold) \
+    +' and horizontal threshold ' + str(horizontal_smoothing_threshold))
   run_length_smoothed = rls.RLSO( cv2.bitwise_not(cleaned), vertical_smoothing_threshold, horizontal_smoothing_threshold)
   components = cc.get_connected_components(run_length_smoothed)
   text = np.zeros((h,w),np.uint8)
@@ -151,12 +151,12 @@ def filter_text_like_areas(img, segmentation, average_size):
   #binarize the image, clean it via the segmentation and remove furigana too
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'binarizing images with threshold value of ' + str(binary_threshold)
+    print('binarizing images with threshold value of ' + str(binary_threshold))
   binary = clean.binarize(img,threshold=binary_threshold)
 
   binary_average_size = cc.average_size(binary)
   if arg.boolean_value('verbose'):
-    print 'average cc size for binaryized grayscale image is ' + str(binary_average_size)
+    print('average cc size for binaryized grayscale image is ' + str(binary_average_size))
   segmentation_mask = np.array(segmentation!=0,'B')
   cleaned = binary * segmentation_mask * furigana_mask
   inv_cleaned = cv2.bitwise_not(cleaned)
@@ -194,10 +194,10 @@ def text_like_histogram(img, area, average_size):
   mean_width = cc.mean_width(aoi)
   mean_height = cc.mean_height(aoi)
   if arg.boolean_value('verbose'):
-    print 'average size = ' + str(avg) + ' mean width = ' + str(mean_width) + ' mean height = ' + str(mean_height)
+    print('average size = ' + str(avg) + ' mean width = ' + str(mean_width) + ' mean height = ' + str(mean_height))
   if math.isnan(avg) or avg==0:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since average size is NaN'
+      print('Rejecting area since average size is NaN')
     #return False
 
   #in a text area, the average size of a blob (cc) will reflect
@@ -213,13 +213,13 @@ def text_like_histogram(img, area, average_size):
   if mean_width < defaults.MINIMUM_TEXT_SIZE_THRESHOLD or \
     mean_height < defaults.MINIMUM_TEXT_SIZE_THRESHOLD:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since average width or height is less than threshold.'
+      print('Rejecting area since average width or height is less than threshold.')
     return False
 
   #check the basic aspect ratio of the ccs
   if mean_width/mean_height < 0.5 or mean_width/mean_height > 2:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since mean cc aspect ratio not textlike.'
+      print('Rejecting area since mean cc aspect ratio not textlike.')
     return False
 
   width_multiplier = float(avg)
@@ -253,22 +253,22 @@ def text_like_histogram(img, area, average_size):
   (v_character_mean, v_character_variance) = slicing_list_stats(v_black_runs)
 
   if arg.boolean_value('verbose'):
-    print 'x ' + str(x) + ' y ' +str(y) + ' w ' + str(w) + ' h ' + str(h)
-    print 'white runs ' + str(len(h_white_runs)) + ' ' + str(len(v_white_runs))
-    print 'white runs mean ' + str(h_spacing_mean) + ' ' + str(v_spacing_mean)
-    print 'white runs std  ' + str(h_spacing_variance) + ' ' + str(v_spacing_variance)
-    print 'black runs ' + str(len(h_black_runs)) + ' ' + str(len(v_black_runs))
-    print 'black runs mean ' + str(h_character_mean) + ' ' + str(v_character_mean)
-    print 'black runs std  ' + str(h_character_variance) + ' ' + str(v_character_variance)
+    print('x ' + str(x) + ' y ' +str(y) + ' w ' + str(w) + ' h ' + str(h))
+    print('white runs ' + str(len(h_white_runs)) + ' ' + str(len(v_white_runs)))
+    print('white runs mean ' + str(h_spacing_mean) + ' ' + str(v_spacing_mean))
+    print('white runs std  ' + str(h_spacing_variance) + ' ' + str(v_spacing_variance))
+    print('black runs ' + str(len(h_black_runs)) + ' ' + str(len(v_black_runs)))
+    print('black runs mean ' + str(h_character_mean) + ' ' + str(v_character_mean))
+    print('black runs std  ' + str(h_character_variance) + ' ' + str(v_character_variance))
 
   if num_h_white_runs < 2 and num_v_white_runs < 2:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since not sufficient amount post filtering whitespace.'
+      print('Rejecting area since not sufficient amount post filtering whitespace.')
     return False
 
   if v_spacing_variance > defaults.MAXIMUM_VERTICAL_SPACE_VARIANCE:
     if arg.boolean_value('verbose'):
-      print 'Rejecting area since vertical inter-character space variance too high.'
+      print('Rejecting area since vertical inter-character space variance too high.')
     return False
 
   if v_character_mean < avg*0.5 or v_character_mean > avg*2.0:
@@ -434,16 +434,16 @@ def main():
   binary_outfile = infile + '.binary.png'
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tGenerating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tGenerating output ' + outfile)
 
   segmented = segment_image_file(infile)
 
-  imsave(outfile,segmented)
+  imwrite(outfile,segmented)
   #cv2.imwrite(outfile,segmented)
   #if binary is not None:
   #  cv2.imwrite(binary_outfile, binary)

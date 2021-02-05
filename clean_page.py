@@ -45,11 +45,11 @@ def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE
   #create gaussian filtered and unfiltered binary images
   sigma = arg.float_value('sigma',default_value=defaults.GAUSSIAN_FILTER_SIGMA)
   if arg.boolean_value('verbose'):
-    print 'Binarizing image with sigma value of ' + str(sigma)
+    print('Binarizing image with sigma value of ' + str(sigma))
   gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=sigma)
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'Binarizing image with sigma value of ' + str(sigma)
+    print('Binarizing image with sigma value of ' + str(sigma))
   gaussian_binary = binarize(gaussian_filtered, threshold=binary_threshold)
   binary = binarize(gray, threshold=binary_threshold)
   
@@ -124,12 +124,12 @@ if __name__ == '__main__':
   mask = arg.boolean_value('mask')
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tGenerating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tGenerating output ' + outfile)
 
   (binary,mask,cleaned) = clean_image_file(infile)
 

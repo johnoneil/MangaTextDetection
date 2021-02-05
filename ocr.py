@@ -27,7 +27,7 @@ import os
 import scipy.ndimage
 from pylab import zeros,amax,median
 
-import tesseract
+import pytesseract
 
 class Blurb(object):
   def __init__(self, x, y, w, h, text, confidence=100.0):
@@ -131,13 +131,13 @@ def ocr_on_bounding_boxes(img, components):
       textord_force_make_prop_words 	F 	Force proportional word segmentation on all rows. 
     '''
     #now run OCR on this bounding box
-    api = tesseract.TessBaseAPI()
-    api.Init(".","jpn",tesseract.OEM_DEFAULT)
+    api = pytesseract.TessBaseAPI()
+    api.Init(".","jpn",pytesseract.OEM_DEFAULT)
     #handle single column lines as "vertical align" and Auto segmentation otherwise
     if len(vertical)<2:
-      api.SetPageSegMode(5)#tesseract.PSM_VERTICAL_ALIGN)#PSM_AUTO)#PSM_SINGLECHAR)#
+      api.SetPageSegMode(5)#pytesseract.PSM_VERTICAL_ALIGN)#PSM_AUTO)#PSM_SINGLECHAR)#
     else:
-      api.SetPageSegMode(tesseract.PSM_AUTO)#PSM_SINGLECHAR)#
+      api.SetPageSegMode(pytesseract.PSM_AUTO)#PSM_SINGLECHAR)#
     api.SetVariable('chop_enable','T')
     api.SetVariable('use_new_state_cost','F')
     api.SetVariable('segment_segcost_rating','F')
@@ -154,7 +154,7 @@ def ocr_on_bounding_boxes(img, components):
     roi = cv2.cv.CreateImage((w,h), 8, 1)
     sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
     cv2.cv.Copy(sub, roi)
-    tesseract.SetCvImage(roi, api)
+    pytesseract.SetCvImage(roi, api)
     txt=api.GetUTF8Text()
     conf=api.MeanTextConf()
     if conf>0 and len(txt)>0:
@@ -170,7 +170,7 @@ def ocr_on_bounding_boxes(img, components):
       roi = cv2.cv.CreateImage((w,h), 8, 1)
       sub = cv2.cv.GetSubRect(cv2.cv.fromarray(img), (x, y, w, h))
       cv2.cv.Copy(sub, roi)
-      tesseract.SetCvImage(roi, api)
+      pytesseract.SetCvImage(roi, api)
       txt=api.GetUTF8Text()
       conf=api.MeanTextConf()
       if conf>0:
@@ -197,12 +197,12 @@ def main():
   outfile = arg.string_value('outfile', default_value=infile + '.html')
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tGenerating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tGenerating output ' + outfile)
 
   img = cv2.imread(infile)
   gray = clean.grayscale(img)
@@ -218,7 +218,7 @@ def main():
 
   blurbs = ocr_on_bounding_boxes(binary, components)
   for blurb in blurbs:
-    print str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text
+    print (str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text)
   
 
 if __name__ == '__main__':
