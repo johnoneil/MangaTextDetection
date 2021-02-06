@@ -6,7 +6,7 @@ Desc:
 Author: John O'Neil
 Email: oneil.john@gmail.com
 DATE: Sunday, June 22nd 2014
-  
+
 """
 
 import argparse
@@ -108,7 +108,6 @@ def binarize(image, threshold=180):
   binary[high_values] = 255
   return binary
 
-
 def contains(cc_a, cc_b):
   w = width_bb(cc_a)
   dw = w/5
@@ -166,7 +165,5 @@ def main():
 
   plt.show()
 
-
 if __name__ == '__main__':
   main()
-

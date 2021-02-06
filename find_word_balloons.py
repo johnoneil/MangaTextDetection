@@ -6,7 +6,7 @@ Desc:
 Author: John O'Neil
 Email: oneil.john@gmail.com
 DATE: Sunday, June 22nd 2014
-  
+
 """
 
 import argparse
@@ -130,7 +130,6 @@ def binarize(image, threshold=180):
   binary[high_values] = 255
   return binary
 
-
 def contains(cc_a, cc_b, ddw=5, ddh=5):
   w = width_bb(cc_a)
   dw = 0
@@ -175,7 +174,6 @@ class ConnectedComponent(object):
     dh = h/5
     return cc_b[0].start>=(self.bounding_box[0].start-dh) and cc_b[0].stop<=(self.bounding_box[0].stop+dh) and \
       cc_b[1].start>=(self.bounding_box[1].start-dw) and cc_b[1].stop<=(self.bounding_box[1].stop+dw)
-
 
 class BalloonCandidate(ConnectedComponent):
   def __init__(self, index, bounding_box, labels):
@@ -272,8 +270,6 @@ def generate_holes_mask(candidate_balloons, binary):
       #mask[two_d_slice] |= b.labels[two_d_slice]==False
   return (final_balloons, mask)
 
-
-
 def main():
 
   #proc_start_time = datetime.datetime.now()
@@ -341,8 +337,6 @@ def main():
   #4 for each balloon candidate, attempt to find character candidates
   #characters, character_mask = find_characters_in_balloon_candidates(candidate_balloons)
 
-
-
   plt.subplot(241)
   plt.imshow(image, cmap=cm.Greys_r)
   plt.subplot(242)
@@ -357,7 +351,6 @@ def main():
   plt.imshow(balloons_with_holes_mask, cmap=cm.Greys_r)
 
   plt.show()
-
 
 if __name__ == '__main__':
   main()

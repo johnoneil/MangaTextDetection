@@ -11,7 +11,7 @@ DATE: Sunday, Sept 1st 2013
   on low resolution manga scans. This scipt attempts
   to estimate furigana sections of given (pre segmented)
   text areas. 
-  
+
 """
 
 import numpy as np
@@ -130,7 +130,6 @@ def estimate_furigana_from_files(filename, segmentation_filename):
   segmentation = seg[:,:,2]
   return estimate_furigana(gray, segmentation)
 
-
 def main():
   parser = arg.parser
   parser = argparse.ArgumentParser(description='Estimate areas of furigana in segmented raw manga scan.')
@@ -171,4 +170,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

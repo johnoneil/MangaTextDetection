@@ -10,7 +10,7 @@ DATE: Friday, August 30th 2013
   Input a manga raw scan image.
   Output a single image with text
   areas blocked in color. 
-  
+
 """
 
 import numpy as np
@@ -100,7 +100,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
     cleaned = cv2.bitwise_not(cleaned)*furigana_mask
     cleaned = cv2.bitwise_not(cleaned)
     text_only = cleaned2segmented(cleaned, average_size)
-  
+
   (text_like_areas, nontext_like_areas) = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
   if arg.boolean_value('verbose'):
     print('**********there are ' + str(len(text_like_areas)) + ' text like areas total.')
@@ -147,7 +147,7 @@ def filter_text_like_areas(img, segmentation, average_size):
   #First step is to estimate furigana like elements so they can be masked
   furigana_areas = furigana.estimate_furigana(img, segmentation)
   furigana_mask = np.array(furigana_areas==0,'B')
-  
+
   #binarize the image, clean it via the segmentation and remove furigana too
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
@@ -299,7 +299,6 @@ def slicing_list_stats(slicings):
     mean = np.mean(widths)
     variance = np.std(widths)
   return (mean, variance)
-    
 
 def area_is_text_like(img, area, average_size):
   #use basic 'ladder' building technique to see if area features somewhat
@@ -428,7 +427,7 @@ def main():
   parser.add_argument('--additional_filtering', help='Attempt to filter false text positives by histogram processing.', action="store_true")
   
   arg.value = parser.parse_args()
-  
+
   infile = arg.string_value('infile')
   outfile = arg.string_value('outfile', default_value=infile + '.segmented.png')
   binary_outfile = infile + '.binary.png'
@@ -447,7 +446,7 @@ def main():
   #cv2.imwrite(outfile,segmented)
   #if binary is not None:
   #  cv2.imwrite(binary_outfile, binary)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('Segmented', segmented)
     #cv2.imshow('Cleaned',cleaned)

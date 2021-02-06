@@ -9,7 +9,7 @@ DATE: Thursday, June 19th 2014
 
   Step by step test of removing connected components first by size,
   and then by aspect ratio.
-  
+
 """
 
 import argparse
@@ -69,7 +69,6 @@ def masks(image,connected_components,max_size,min_size):
     mask[component] = image[component]>0
   return mask
 
-
 '''
 def draw_bounding_boxes(img,connected_components,max_size=0,min_size=0,color=(0,0,255),line_size=2):
   for component in connected_components:
@@ -81,6 +80,7 @@ def draw_bounding_boxes(img,connected_components,max_size=0,min_size=0,color=(0,
     (ys,xs)=component[:2]
     cv2.rectangle(img,(xs.start,ys.start),(xs.stop,ys.stop),color,line_size)
 '''
+
 def filter_by_size(image,connected_components,max_size,min_size):
   filtered = []
   for cc in connected_components:
@@ -198,8 +198,6 @@ def binarize(image, threshold=180):
   binary[low_values] = 0
   binary[high_values] = 255
   return binary
-
-
 
 def main():
 

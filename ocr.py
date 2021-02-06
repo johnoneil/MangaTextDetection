@@ -9,9 +9,9 @@ DATE: Saturday, August 10th 2013
       Revision: Thursday, August 15th 2013
 
  Run OCR on some text bounding boxes.
-  
+
 """
-#import clean_page as clean
+
 import connected_components as cc
 import run_length_smoothing as rls
 import segmentation
@@ -219,8 +219,6 @@ def main():
   blurbs = ocr_on_bounding_boxes(binary, components)
   for blurb in blurbs:
     print (str(blurb.x)+','+str(blurb.y)+' '+str(blurb.w)+'x'+str(blurb.h)+' '+ str(blurb.confidence)+'% :'+ blurb.text)
-  
 
 if __name__ == '__main__':
   main()
-

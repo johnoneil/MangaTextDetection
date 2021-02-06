@@ -8,7 +8,7 @@ Email: oneil.john@gmail.com
 DATE: Friday,  Sept 6th 2013
 
   Default parameter values.
-  
+
 """
 
 BINARY_THRESHOLD = 190

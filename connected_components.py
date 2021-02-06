@@ -10,7 +10,7 @@ DATE: Saturday, August 10th 2013
 
   Connected component generation and manipulation
   utility functions.
-  
+
 """
 import numpy as np
 import scipy.ndimage
@@ -139,4 +139,3 @@ def form_mask(img, max_size, min_size):
   #mask = bounding_boxes(img,sorted_components,max_size,min_size)
   mask = masks(img,sorted_components,max_size,min_size)
   return mask
-

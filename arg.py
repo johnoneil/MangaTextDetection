@@ -9,7 +9,7 @@ DATE: Friday, Sept 6th 2013
 
   Import this argparser into modules, so they all can be driven
   off a 'global' argparser.
-  
+
 """
 
 import argparse

@@ -10,9 +10,8 @@ DATE: Saturday, August 25th 2013
   Front to back end Manga text detection.
   Input is image file of raw manga image
   Output is HTML page annotating image with detected text.
-  
+
 """
-#import clean_page as clean
 import connected_components as cc
 import run_length_smoothing as rls
 import clean_page as clean
@@ -29,7 +28,6 @@ import argparse
 import os
 import scipy.ndimage
 import datetime
-
 
 if __name__ == '__main__':
 
@@ -164,12 +162,12 @@ if __name__ == '__main__':
   #  print str(blurb.confidence)+'% :'+ blurb.text
   #open(outfile, "w").write(render_to_string(template, c))
   open(outfile, "w").write(t.render(c).encode("utf-8"))
-  
-  
+
+
   if arg.boolean_value('display'):
     cv2.imshow('img',img)
     #cv2.imwrite('segmented.png',img)
-    cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)
+    #cv2.imshow('run_length_smoothed_or',run_length_smoothed_or)
     #cv2.imwrite('run_length_smoothed.png',run_length_smoothed_or)
     #cv2.imwrite('cleaned.png',cleaned)
 
