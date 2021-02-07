@@ -1,4 +1,5 @@
 import pytesseract
+import os
 
 pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
 
@@ -21,7 +22,7 @@ def extend_bounding_rects(img, components):
 
     return extended_rects
 
-def ocr_on_bounding_boxes(img, components):
+def ocr_on_bounding_boxes(img, components, path=''):
 
     texts = []
     extended_rects = extend_bounding_rects(img, components)
@@ -36,7 +37,8 @@ def ocr_on_bounding_boxes(img, components):
         text = text.replace('\f','')
         texts.append(text)
 
-    with open("./test/output.txt", "w", encoding='utf-8') as txt_file:
+    path = os.path.splitext(path)[0]+'.txt'
+    with open(path, "w", encoding='utf-8') as txt_file:
         for text in texts:
             txt_file.write(" ".join(text) + "\n")
 
