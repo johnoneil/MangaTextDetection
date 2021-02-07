@@ -11,7 +11,6 @@ DATE: Saturday, Sept 14th 2013
   with text areas outlined in red.
   
 """
-#import clean_page as clean
 import connected_components as cc
 import run_length_smoothing as rls
 import clean_page as clean
@@ -29,10 +28,6 @@ import argparse
 import os
 import scipy.ndimage
 import datetime
-
-#test
-import ocr_dev
-
 
 if __name__ == '__main__':
 
@@ -74,7 +69,6 @@ if __name__ == '__main__':
   cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
 
   imwrite(outfile, img)
-  ocr_dev.ocr_on_bounding_boxes(img_copy, components)
 
   if arg.boolean_value('display'):
     cv2.imshow('segmented_image',segmented_image)
