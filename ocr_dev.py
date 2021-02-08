@@ -1,5 +1,4 @@
 import pytesseract
-import os
 
 pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
 
@@ -37,9 +36,8 @@ def ocr_on_bounding_boxes(img, components, path=''):
         text = text.replace('\f','')
         texts.append(text)
 
-    path = os.path.splitext(path)[0]+'.txt'
-    with open(path, "w", encoding='utf-8') as txt_file:
-        for text in texts:
-            txt_file.write(" ".join(text) + "\n")
-
     return texts
+
+# TODO 1. Export image to an html file and 
+# annotate the page with the recognized text.
+# 2. Supress furigana when running OCR
