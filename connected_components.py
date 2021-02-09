@@ -29,6 +29,11 @@ def height_bb(a):
 def area_nz(slice, image):
   return np.count_nonzero(image[slice])
 
+def rectangle_to_2d_slice(rects):
+  pass
+
+# TODO: Remove scipy.ndimage dependency
+# Can be achieved using cv2.findContours
 def get_connected_components(image):
   s = scipy.ndimage.morphology.generate_binary_structure(2,2)
   labels,n = scipy.ndimage.measurements.label(image)#,structure=s)

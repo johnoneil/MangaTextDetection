@@ -1,6 +1,27 @@
 import pytesseract
-
+from segmentation import dimensions_2d_slice
+import defaults
 pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
+
+class textBox:
+    def __init__(self, x, y, w, h, text):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.text = text
+    def export_as_dict(self):
+        return f"{{x:{self.x},y:{self.y},w:{self.w},h:{self.h},text:\"{self.text}\"}}"
+
+def create_textboxes(rects, texts):
+
+    text_boxes = []
+
+    for i, rect in enumerate(rects):
+        x, y, w, h = dimensions_2d_slice(rect[:2])
+        text_boxes.append(textBox(x,y,w,h,texts[i]))
+
+    return text_boxes
 
 def extend_bounding_rects(img, components):
 
@@ -21,19 +42,25 @@ def extend_bounding_rects(img, components):
 
     return extended_rects
 
+def filter_text(text):
+    for ch in ['\n','\f','\"','\'']:
+        if ch in text:
+            text = text.replace(ch,' ')
+    return text
+
 def ocr_on_bounding_boxes(img, components, path=''):
 
     texts = []
     extended_rects = extend_bounding_rects(img, components)
 
-    lang = 'jpn'
-    oem = 0
-    psm = 5
+    lang = defaults.OCR_LANGUAGE
+    oem = 1
+    psm = defaults.TEXT_DIRECTION
     config = f"-l {lang} --oem {oem} --psm {psm}"
     
     for rect in extended_rects:
         text = pytesseract.image_to_string(rect, config=(config))
-        text = text.replace('\f','')
+        text = filter_text(text)
         texts.append(text)
 
     return texts

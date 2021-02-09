@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <style>
+            html, body {{
+                padding:20px;
+                margin:0px;
+                font-family:'Lato', sans-serif;
+            }}
+            #content {{
+                width:100%;
+            }}
+            h1 {{
+                font-size:21px;
+                font-weight:normal;
+                margin:0;
+                padding:0;
+            }}
+            img {{
+                max-width:100%;
+            }}
+        </style>
+        <link href="annotorious/annotorious.min.css" rel="stylesheet">
+        <script type="text/javascript" src="annotorious/annotorious.min.js"></script>
+    </head>
+    <body>
+        <div id="content">        
+            <h1>OCR Results</h1>    
+            <img id='{img_name}' src='{img_path}'>
+        </div>
+    </div>
+        <script>
+            var anno = Annotorious.init({{
+                image: '{img_name}',
+                locale: 'auto',
+            }});
+            function addAnnotation_(x,y,w,h,text) {{
+                var annotation = {{
+                    "type": "Annotation",
+                    "body": {{
+                        "type": "TextualBody",
+                        "value": text
+                    }},
+                    "target": {{
+                        "selector": [{{
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": `xywh=pixel:${{x}},${{y}},${{w}},${{h}}`
+                        }}]
+                    }}
+                }}
+                anno.addAnnotation(annotation)
+            }}
+            for (tb of {textBoxes}) {{
+                addAnnotation_(tb.x,tb.y,tb.w,tb.h,tb.text)
+            }}
+        </script>
+    </body>
+</html>
