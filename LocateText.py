@@ -9,7 +9,7 @@ DATE: Saturday, Sept 14th 2013
 
   Setment raw manga scan and output image
   with text areas outlined in red.
-  
+
 """
 #import clean_page as clean
 import connected_components as cc
@@ -20,7 +20,7 @@ import segmentation as seg
 import furigana
 import arg
 import defaults
-from imageio import imwrite
+from imageio import imsave
 
 import numpy as np
 import cv2
@@ -69,8 +69,8 @@ if __name__ == '__main__':
   components = cc.get_connected_components(segmented_image)
   cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
 
-  imwrite(outfile, img)
-  
+  imsave(outfile, img)
+
   if arg.boolean_value('display'):
     cv2.imshow('segmented_image',segmented_image)
 

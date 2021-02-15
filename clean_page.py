@@ -20,8 +20,8 @@ DATE: Sunday, August 4th 2012
 
   Subsequent tooling and processing should
   seqment the resultant image and masks
-  for text isolation into lines and OCR. 
-  
+  for text isolation into lines and OCR.
+
 """
 
 import numpy as np
@@ -52,10 +52,10 @@ def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE
     print('Binarizing image with sigma value of ' + str(sigma))
   gaussian_binary = binarize(gaussian_filtered, threshold=binary_threshold)
   binary = binarize(gray, threshold=binary_threshold)
-  
+
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)
-  #print 'Initial mask average size is ' + str(average_size)
+  #print('Initial mask average size is ' + str(average_size))
   max_size = average_size*max_scale
   min_size = average_size*min_scale
 
@@ -67,7 +67,7 @@ def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE
 
   #final mask is size filtered connected components on canny mask
   final_mask = cc.form_mask(canny_mask, max_size, min_size)
-  
+
   #apply mask and return images
   cleaned = cv2.bitwise_not(final_mask * binary)
   return (cv2.bitwise_not(binary), final_mask, cleaned)
@@ -136,7 +136,7 @@ if __name__ == '__main__':
   cv2.imwrite(outfile,cleaned)
   if binary is not None:
     cv2.imwrite(binary_outfile, binary)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('Binary',binary)
     cv2.imshow('Cleaned',cleaned)
@@ -145,4 +145,3 @@ if __name__ == '__main__':
   if cv2.waitKey(0) == 27:
     cv2.destroyAllWindows()
   cv2.destroyAllWindows()
-

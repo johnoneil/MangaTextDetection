@@ -10,8 +10,8 @@ DATE: Sunday, Sept 1st 2013
   Furigana is a major difficutly in running OCR
   on low resolution manga scans. This scipt attempts
   to estimate furigana sections of given (pre segmented)
-  text areas. 
-  
+  text areas.
+
 """
 
 import numpy as np
@@ -19,7 +19,7 @@ import math
 import cv2
 import sys
 import scipy.ndimage
-from imageio import imwrite
+from imageio import imsave
 import run_length_smoothing as rls
 import ocr
 import argparse
@@ -161,8 +161,8 @@ def main():
 
   furigana = estimate_furigana_from_files(infile, segmentation_file)
 
-  imwrite(outfile,furigana)
-  
+  imsave(outfile,furigana)
+
   if arg.boolean_value('display'):
     cv2.imshow('Furigana', furigana)
     if cv2.waitKey(0) == 27:
@@ -171,4 +171,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

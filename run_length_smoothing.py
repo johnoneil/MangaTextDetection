@@ -10,7 +10,7 @@ DATE: Thursday, August 1st 2013
   Experiment to use run length smoothing
   techniques to detect vertical or horizontal
   runs of characters in cleaned manga pages.
-  
+
 """
 
 import numpy as np

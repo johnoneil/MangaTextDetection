@@ -9,8 +9,8 @@ DATE: Friday, August 30th 2013
 
   Input a manga raw scan image.
   Output a single image with text
-  areas blocked in color. 
-  
+  areas blocked in color.
+
 """
 
 import numpy as np
@@ -67,9 +67,9 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
   if arg.boolean_value('verbose'):
     print('Applying Gaussian filter with sigma (std dev) of ' + str(sigma))
   gaussian_filtered = scipy.ndimage.gaussian_filter(img, sigma=sigma)
-  
+
   gaussian_binary = clean.binarize(gaussian_filtered,threshold=binary_threshold)
-  
+
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)
   if arg.boolean_value('verbose'):
@@ -100,7 +100,7 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
     cleaned = cv2.bitwise_not(cleaned)*furigana_mask
     cleaned = cv2.bitwise_not(cleaned)
     text_only = cleaned2segmented(cleaned, average_size)
-  
+
   (text_like_areas, nontext_like_areas) = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
   if arg.boolean_value('verbose'):
     print('**********there are ' + str(len(text_like_areas)) + ' text like areas total.')
@@ -111,8 +111,8 @@ def segment_image(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SC
     text_only = 0.5*text_only + 0.5*img
     #text_rows = 0.5*text_rows+0.5*gray
     #text_colums = 0.5*text_columns+0.5*gray
-  
-  #text_only = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)   
+
+  #text_only = filter_text_like_areas(img, segmentation=text_only, average_size=average_size)
 
   segmented_image = np.zeros((h,w,3), np.uint8)
   segmented_image[:,:,0] = img
@@ -136,7 +136,7 @@ def cleaned2segmented(cleaned, average_size):
     seg_thresh = arg.integer_value('segment_threshold',default_value=1)
     (aspect, v_lines, h_lines) = ocr.segment_into_lines(cv2.bitwise_not(cleaned), component,min_segment_threshold=seg_thresh)
     if len(v_lines)<2 and len(h_lines)<2:continue
-    
+
     ocr.draw_2d_slices(text,[component],color=255,line_size=-1)
     #ocr.draw_2d_slices(text_columns,v_lines,color=255,line_size=-1)
     #ocr.draw_2d_slices(text_rows,h_lines,color=255,line_size=-1)
@@ -147,7 +147,7 @@ def filter_text_like_areas(img, segmentation, average_size):
   #First step is to estimate furigana like elements so they can be masked
   furigana_areas = furigana.estimate_furigana(img, segmentation)
   furigana_mask = np.array(furigana_areas==0,'B')
-  
+
   #binarize the image, clean it via the segmentation and remove furigana too
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
@@ -238,7 +238,7 @@ def text_like_histogram(img, area, average_size):
   for i,row in enumerate(range(y,y+h)):
     black_pixel_count = np.count_nonzero(x_subimage[row,x:x+w])
     y_histogram[i] = black_pixel_count
-  
+
   h_white_runs = get_white_runs(x_histogram)
   num_h_white_runs = len(h_white_runs)
   h_black_runs = get_black_runs(x_histogram)
@@ -272,12 +272,12 @@ def text_like_histogram(img, area, average_size):
     return False
 
   if v_character_mean < avg*0.5 or v_character_mean > avg*2.0:
-    pass    
+    pass
     #return False
   if h_character_mean < avg*0.5 or h_character_mean > avg*2.0:
-    pass    
+    pass
     #return False
-  
+
   return True
 
 def get_black_runs(histogram):
@@ -299,7 +299,7 @@ def slicing_list_stats(slicings):
     mean = np.mean(widths)
     variance = np.std(widths)
   return (mean, variance)
-    
+
 
 def area_is_text_like(img, area, average_size):
   #use basic 'ladder' building technique to see if area features somewhat
@@ -372,7 +372,7 @@ def area_is_text_like(img, area, average_size):
       minimum_width = s
   #print 'at location ' + str(x) + ' ' + str(y) + ' ' + str(w) + ' ' + str(h)
   #print 'found minimum cell height ' + str(minimum_height) + ' with black pixel count ' + str(minimum_black_pixel_count)
-  
+
   #draw the finalized grid on our img
   num_horizontal_steps = int(w/minimum_width)+1
   if (num_horizontal_steps-1) * minimum_width < (w-minimum_width/4):
@@ -385,7 +385,7 @@ def area_is_text_like(img, area, average_size):
     num_vertical_steps = num_vertical_steps + 1
   total_height = (num_vertical_steps-1) * minimum_height
   #print 'height is ' + str(h) + ' and total line height is ' + str(total_height)
-  #print 'number of steps is ' + str(num_vertical_steps) + ' and num_cells*min height ' + str(num_vertical_steps*minimum_height) 
+  #print 'number of steps is ' + str(num_vertical_steps) + ' and num_cells*min height ' + str(num_vertical_steps*minimum_height)
   for vertical_step in range(0, num_vertical_steps):
       #pass
       img[y+vertical_step*minimum_height,x:x+total_width]=255
@@ -411,7 +411,7 @@ def segment_image_file(filename):
   gray = clean.grayscale(img)
   return segment_image(gray)
 
-def main(): 
+def main():
   parser = arg.parser
   parser = argparse.ArgumentParser(description='Segment raw Manga scan image.')
   parser.add_argument('infile', help='Input (color) raw Manga scan image to clean.')
@@ -426,9 +426,9 @@ def main():
   parser.add_argument('--furigana', help='Attempt to suppress furigana characters to improve OCR.', action="store_true")
   parser.add_argument('--segment_threshold', help='Threshold for nonzero pixels to separete vert/horiz text lines.',type=int,default=defaults.SEGMENTATION_THRESHOLD)
   parser.add_argument('--additional_filtering', help='Attempt to filter false text positives by histogram processing.', action="store_true")
-  
+
   arg.value = parser.parse_args()
-  
+
   infile = arg.string_value('infile')
   outfile = arg.string_value('outfile', default_value=infile + '.segmented.png')
   binary_outfile = infile + '.binary.png'
@@ -447,7 +447,7 @@ def main():
   #cv2.imwrite(outfile,segmented)
   #if binary is not None:
   #  cv2.imwrite(binary_outfile, binary)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('Segmented', segmented)
     #cv2.imshow('Cleaned',cleaned)
