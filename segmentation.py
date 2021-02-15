@@ -18,7 +18,7 @@ import math
 import cv2
 import sys
 import scipy.ndimage
-from imageio import imwrite
+from imageio import imsave
 import run_length_smoothing as rls
 import ocr
 import argparse
@@ -443,7 +443,7 @@ def main():
 
   segmented = segment_image_file(infile)
 
-  imwrite(outfile,segmented)
+  imsave(outfile,segmented)
   #cv2.imwrite(outfile,segmented)
   #if binary is not None:
   #  cv2.imwrite(binary_outfile, binary)
