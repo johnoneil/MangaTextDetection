@@ -20,8 +20,8 @@ DATE: Sunday, August 4th 2012
 
   Subsequent tooling and processing should
   seqment the resultant image and masks
-  for text isolation into lines and OCR. 
-  
+  for text isolation into lines and OCR.
+
 """
 
 import numpy as np
@@ -45,17 +45,17 @@ def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE
   #create gaussian filtered and unfiltered binary images
   sigma = arg.float_value('sigma',default_value=defaults.GAUSSIAN_FILTER_SIGMA)
   if arg.boolean_value('verbose'):
-    print 'Binarizing image with sigma value of ' + str(sigma)
+    print('Binarizing image with sigma value of ' + str(sigma))
   gaussian_filtered = scipy.ndimage.gaussian_filter(gray, sigma=sigma)
   binary_threshold = arg.integer_value('binary_threshold',default_value=defaults.BINARY_THRESHOLD)
   if arg.boolean_value('verbose'):
-    print 'Binarizing image with sigma value of ' + str(sigma)
+    print('Binarizing image with sigma value of ' + str(sigma))
   gaussian_binary = binarize(gaussian_filtered, threshold=binary_threshold)
   binary = binarize(gray, threshold=binary_threshold)
-  
+
   #Draw out statistics on average connected component size in the rescaled, binary image
   average_size = cc.average_size(gaussian_binary)
-  #print 'Initial mask average size is ' + str(average_size)
+  #print('Initial mask average size is ' + str(average_size))
   max_size = average_size*max_scale
   min_size = average_size*min_scale
 
@@ -67,7 +67,7 @@ def clean_page(img, max_scale=defaults.CC_SCALE_MAX, min_scale=defaults.CC_SCALE
 
   #final mask is size filtered connected components on canny mask
   final_mask = cc.form_mask(canny_mask, max_size, min_size)
-  
+
   #apply mask and return images
   cleaned = cv2.bitwise_not(final_mask * binary)
   return (cv2.bitwise_not(binary), final_mask, cleaned)
@@ -124,19 +124,19 @@ if __name__ == '__main__':
   mask = arg.boolean_value('mask')
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   if arg.boolean_value('verbose'):
-    print '\tProcessing file ' + infile
-    print '\tGenerating output ' + outfile
+    print('\tProcessing file ' + infile)
+    print('\tGenerating output ' + outfile)
 
   (binary,mask,cleaned) = clean_image_file(infile)
 
   cv2.imwrite(outfile,cleaned)
   if binary is not None:
     cv2.imwrite(binary_outfile, binary)
-  
+
   if arg.boolean_value('display'):
     cv2.imshow('Binary',binary)
     cv2.imshow('Cleaned',cleaned)
@@ -145,4 +145,3 @@ if __name__ == '__main__':
   if cv2.waitKey(0) == 27:
     cv2.destroyAllWindows()
   cv2.destroyAllWindows()
-
