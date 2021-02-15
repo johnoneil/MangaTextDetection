@@ -19,6 +19,7 @@ import matplotlib.cm as cm
 import scipy
 import scipy.ndimage
 import scipy.stats
+import sys
 from pylab import zeros,amax,median
 
 def area_bb(a):
@@ -96,7 +97,7 @@ class HoleFilter(object):
           return True
     return False
 
-    return aspect >= self._min and aspect <= self._max
+    #return aspect >= self._min and aspect <= self._max
 
   def __call__(self, cc):
     return self.filter(cc)
@@ -240,7 +241,7 @@ def holes_mask(candidate_balloons, binary):
   mask = zeros(binary.shape, np.uint8)
   for b in candidate_balloons:
     two_d_slice = b.bounding_box
-    print str(b.labels[two_d_slice])
+    print(str(b.labels[two_d_slice]))
     mask[two_d_slice] |= b.labels[two_d_slice]==(b.label)
   return (candidate_balloons, mask)
 
@@ -283,7 +284,7 @@ def main():
   infile = args.infile
 
   if not os.path.isfile(infile):
-    print 'Please provide a regular existing input file. Use -h option for help.'
+    print('Please provide a regular existing input file. Use -h option for help.')
     sys.exit(-1)
 
   image = Image.open(infile).convert("L")
@@ -308,8 +309,8 @@ def main():
 
   min_text_area = (float(h)/140.0)**2.0
   max_text_area = (float(h)/30.0)**2.0
-  print "min " + str(min_text_area)
-  print "max " + str(max_text_area)
+  print("min " + str(min_text_area))
+  print("max " + str(max_text_area))
 
   area_mask = generate_mask(np.invert(binary), AreaFilter(min=min_text_area, max=max_text_area))
   ar_mask = generate_mask(area_mask, AspectRatioFilter(min=0.75, max=1.15))
@@ -340,7 +341,7 @@ def main():
   #4 for each balloon candidate, attempt to find character candidates
   #characters, character_mask = find_characters_in_balloon_candidates(candidate_balloons)
 
-    
+
 
   plt.subplot(241)
   plt.imshow(image, cmap=cm.Greys_r)

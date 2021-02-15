@@ -20,7 +20,7 @@ import segmentation as seg
 import furigana
 import arg
 import defaults
-from scipy.misc import imsave
+from imageio import imsave
 
 import numpy as np
 import cv2

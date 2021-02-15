@@ -19,7 +19,7 @@ import math
 import cv2
 import sys
 import scipy.ndimage
-from scipy.misc import imsave
+from imageio import imsave
 import run_length_smoothing as rls
 import ocr
 import argparse
