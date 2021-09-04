@@ -8,6 +8,21 @@ Overview
 --------
 This repository holds some experiments I did in summer 2013 during a sudden interest in text detection in images. It uses some standard techniques (run length smoothing, connected component analysis) and some experimental stuff. Overall, I was able to get in the neighborhood of where I wanted to be, but the results are very processing intensive and not terribly reliable.
 
+Usage
+-----
+Provide an input file or path using the arguments `-i` and `-p`, respectively. The user may provide a corresponding output file or path using the `-o` argument. The output is saved in the default file/directory if output argument is defined.  
+```
+    python MangaOCR_dev.py -i <infile> -o <outfile>
+    python MangaOCR_dev.py -p <inpath> -o <outpath>
+    python MangaOCR_dev.py -p <inpath> --default_directory
+```
+Other useful arguments:
+```
+    --html : Display output in an html file.
+    --default-directory : Store output in predefined folders.
+    --additional_filtering : Attempt to filter false text positives by histogram processing.
+```
+
 State
 -----
 I haven't bothered to form this into a python library. It's just a series of scripts each trying out various things, such as:

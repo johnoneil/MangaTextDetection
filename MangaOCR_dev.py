@@ -22,7 +22,11 @@ def process_image(infile, outfile, path, anno_dir_exists=False):
 
     t0 = time.perf_counter()
 
+    # get correct output paths
     path = imgio.normalize_path(path)
+    img_out, txt_out = imgio.get_output_directory(path, infile, path, os.path.splitext(infile)[0] + '.txt', outfile)
+    html_path = os.path.split(img_out)[0]
+
     img = cv2.imread(path+infile)
     img_copy = img.copy()
     gray = clean.grayscale(img)
@@ -32,25 +36,29 @@ def process_image(infile, outfile, path, anno_dir_exists=False):
         print('Binarizing with threshold value of ' + str(binary_threshold))
     inv_binary = cv2.bitwise_not(clean.binarize(gray, threshold=binary_threshold))
 
-    segmented_image = seg.segment_image(inv_binary)
+    # python MangaOCR.py -p <inpath> -o <outpath> 
+    segmented_image = seg.segment_image(gray)
     segmented_image = segmented_image[:,:,2]
 
     components = cc.get_connected_components(segmented_image)
-    cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
 
-    t1 = time.perf_counter()
-    print(f"Image processing done in {t1} seconds")
+    if arg.boolean_value('debug'):
+        cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
+        imgio.save_image(img, img_out)
+    else:
+        cc.draw_bounding_boxes(img,components,color=(255,0,0),line_size=2)
+        imgio.save_image(img, img_out)
+
+    if arg.boolean_value('verbose'):
+        t1 = time.perf_counter()
+        print(f"Image processing done in {t1} seconds")
 
     texts = ocr.ocr_on_bounding_boxes(img_copy, components)
 
-    t2 = time.perf_counter()
-    print(f"OCR done in {t2} seconds")
+    if arg.boolean_value('verbose'):
+        t2 = time.perf_counter()
+        print(f"OCR done in {t2} seconds")
 
-    # get correct paths
-    img_out, txt_out = imgio.get_output_directory(path, infile, path, os.path.splitext(infile)[0] + '.txt', outfile)
-    html_path = os.path.split(img_out)[0]
-
-    imgio.save_image(img, img_out)
     if (arg.boolean_value('debug')):
         imgio.save_text(texts, txt_out)
 
@@ -60,18 +68,14 @@ def process_image(infile, outfile, path, anno_dir_exists=False):
         anno_dir_exists = True
     imgio.save_webpage(html_out, os.path.splitext(img_out)[0]+'.html')
 
-    t3 = time.perf_counter()
-    print(f"Save done in {t3} seconds")
-
     return anno_dir_exists
-
-
 
 def main():
 
-    # working commands
-    # python MangaOCR_dev.py -i ./doc/test.png -o ./test/test.png
-    # python MangaOCR_dev.py -p ./test --additional_filtering --default_directory
+    # Working commands
+    # python MangaOCR_dev.py -i <infile> -o <outfile>
+    # python MangaOCR_dev.py -p <inpath> -o <outpath>
+    # python MangaOCR_dev.py -p <inpath> --default_directory
 
     parser = arg.parser
     parser = argparse.ArgumentParser(description='Generate text file containing OCR\'d text.')
@@ -81,7 +85,7 @@ def main():
     parser.add_argument('-o','--output', help='Output file or filepath.', dest='outfile')
     parser.add_argument('-s','--scheme', help='Output naming scheme. Appended to input filename', dest='scheme', type=str, default='_text')
     parser.add_argument('-v','--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
-    parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
+    # parser.add_argument('-d','--debug', help='Overlay input image into output.', action="store_true")
     parser.add_argument('--html', help='Display output in an html file.', action="store_true")
     parser.add_argument('--furigana', help='Attempt to suppress furigana characters which interfere with OCR.', action="store_true")
     parser.add_argument('--sigma', help='Std Dev of gaussian preprocesing filter.',type=float,default=None)
@@ -110,7 +114,7 @@ def main():
         for infile_ in infiles:
             try:
                 outfile_ = outfile
-                anno_dir_exists = process_image(infile_, outfile_, inpath,anno_dir_exists)
+                anno_dir_exists = process_image(infile_, outfile_, inpath, anno_dir_exists)
             except AttributeError as e:
                 if arg.boolean_value('verbose'):
                     print('Input file \"', infile_, '\" is not an image', sep='')
