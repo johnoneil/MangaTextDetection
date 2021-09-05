@@ -3,7 +3,7 @@
 
 import defaults
 import arg
-import ocr_dev as ocr
+import ocr
 
 from imageio import imwrite
 import cv2

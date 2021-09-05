@@ -35,4 +35,3 @@ nosetests.xml
 .pydevproject
 
 /test
-/old
