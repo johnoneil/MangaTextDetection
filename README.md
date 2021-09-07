@@ -12,9 +12,9 @@ Usage
 -----
 Provide an input file or path using the arguments `-i` and `-p`, respectively. When an input path is provided, all files in the directory are processed. The user may provide a corresponding output file or path using the `-o` argument. The output is saved in the default file/directory if no output argument is defined.
 ```
-    python MangaOCR_dev.py -i <infile> -o <outfile>
-    python MangaOCR_dev.py -p <inpath> -o <outpath>
-    python MangaOCR_dev.py -p <inpath> --default_directory
+    python LocateText.py -i <infile> -o <outfile>
+    python LocateText.py -p <inpath> -o <outpath>
+    python LocateText.py -p <inpath> --default_directory
 ```
 Other useful arguments:
 ```
@@ -36,10 +36,10 @@ Text Location Example
 Here's an example run of a page from Weekly Young Magazine #31 2013. The input image is as follows (jpg).
 ![Input image](doc/194.jpg)
 
-An initial estimate of text locations can be found by the `MangaOCR.py` script:
+An initial estimate of text locations can be found by the `LocateText.py` script:
 
 ```
-    python MangaOCR.py -i 194.jpg
+    python LocateText.py -i 194.jpg
 ```
 
 With the results as follows (estimated text marked with red boxes):
